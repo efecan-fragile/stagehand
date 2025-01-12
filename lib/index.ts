@@ -150,7 +150,10 @@ async function getBrowser(
         ...browserbaseSessionCreateParams,
         ...(shouldUseUnsafeMode
           ? {
-              unsafeMode: true,
+              browserSettings: {
+                // @ts-expect-error supported by API
+                unsafeMode: true,
+              },
             }
           : {}),
       });
