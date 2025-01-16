@@ -22,6 +22,12 @@ export interface ConstructorParams {
     llmClient?: LLMClient;
     modelClientOptions?: ClientOptions;
     unsafeMode?: boolean;
+    proxy?: {
+        server: string;
+        bypass?: string;
+        username?: string;
+        password?: string;
+    };
 }
 export interface InitOptions {
     /** @deprecated Pass this into the Stagehand constructor instead. This will be removed in the next major version. */

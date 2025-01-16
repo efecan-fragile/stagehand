@@ -24,7 +24,8 @@ export declare class Stagehand {
     private contextPath?;
     private llmClient;
     private unsafeMode;
-    constructor({ env, apiKey, projectId, verbose, debugDom, llmProvider, llmClient, headless, logger, browserbaseSessionCreateParams, domSettleTimeoutMs, enableCaching, browserbaseSessionID, modelName, modelClientOptions, unsafeMode, }?: ConstructorParams);
+    private proxy?;
+    constructor({ env, apiKey, projectId, verbose, debugDom, llmProvider, llmClient, headless, logger, browserbaseSessionCreateParams, domSettleTimeoutMs, enableCaching, browserbaseSessionID, modelName, modelClientOptions, unsafeMode, proxy, }?: ConstructorParams);
     get logger(): (logLine: LogLine) => void;
     get page(): Page;
     get env(): "LOCAL" | "BROWSERBASE";

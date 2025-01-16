@@ -4638,7 +4638,7 @@ var BROWSERBASE_REGION_DOMAIN = {
   "eu-central-1": "wss://connect.euc1.browserbase.com",
   "ap-southeast-1": "wss://connect.apse1.browserbase.com"
 };
-function getBrowser(apiKey, projectId, env = "LOCAL", headless = false, logger, browserbaseSessionCreateParams, browserbaseSessionID, shouldUseUnsafeMode = false) {
+function getBrowser(apiKey, projectId, env = "LOCAL", headless = false, logger, browserbaseSessionCreateParams, browserbaseSessionID, shouldUseUnsafeMode = false, proxy) {
   return __async(this, null, function* () {
     if (env === "BROWSERBASE") {
       if (!apiKey) {
@@ -4800,7 +4800,8 @@ function getBrowser(apiKey, projectId, env = "LOCAL", headless = false, logger, 
         {
           channel: "chrome",
           viewport: null,
-          headless
+          headless,
+          proxy
         }
       );
       logger({
@@ -4831,7 +4832,8 @@ var Stagehand = class {
     browserbaseSessionID,
     modelName,
     modelClientOptions,
-    unsafeMode
+    unsafeMode,
+    proxy
   } = {
     env: "BROWSERBASE"
   }) {
@@ -4854,6 +4856,7 @@ var Stagehand = class {
     this.browserbaseSessionCreateParams = browserbaseSessionCreateParams;
     this.browserbaseSessionID = browserbaseSessionID;
     this.unsafeMode = unsafeMode != null ? unsafeMode : false;
+    this.proxy = proxy;
   }
   get logger() {
     return (logLine) => {
@@ -4897,7 +4900,8 @@ var Stagehand = class {
         this.logger,
         this.browserbaseSessionCreateParams,
         this.browserbaseSessionID,
-        this.unsafeMode
+        this.unsafeMode,
+        this.proxy
       ).catch((e) => {
         console.error("Error in init:", e);
         const br = {

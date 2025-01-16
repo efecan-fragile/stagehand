@@ -23,6 +23,12 @@ export interface ConstructorParams {
   llmClient?: LLMClient;
   modelClientOptions?: ClientOptions;
   unsafeMode?: boolean;
+  proxy?: {
+    server: string;
+    bypass?: string;
+    username?: string;
+    password?: string;
+  };
 }
 
 export interface InitOptions {

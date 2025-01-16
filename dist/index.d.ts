@@ -138,6 +138,12 @@ interface ConstructorParams {
     llmClient?: LLMClient;
     modelClientOptions?: ClientOptions;
     unsafeMode?: boolean;
+    proxy?: {
+        server: string;
+        bypass?: string;
+        username?: string;
+        password?: string;
+    };
 }
 interface InitOptions {
     /** @deprecated Pass this into the Stagehand constructor instead. This will be removed in the next major version. */
@@ -247,7 +253,8 @@ declare class Stagehand {
     private contextPath?;
     private llmClient;
     private unsafeMode;
-    constructor({ env, apiKey, projectId, verbose, debugDom, llmProvider, llmClient, headless, logger, browserbaseSessionCreateParams, domSettleTimeoutMs, enableCaching, browserbaseSessionID, modelName, modelClientOptions, unsafeMode, }?: ConstructorParams);
+    private proxy?;
+    constructor({ env, apiKey, projectId, verbose, debugDom, llmProvider, llmClient, headless, logger, browserbaseSessionCreateParams, domSettleTimeoutMs, enableCaching, browserbaseSessionID, modelName, modelClientOptions, unsafeMode, proxy, }?: ConstructorParams);
     get logger(): (logLine: LogLine) => void;
     get page(): Page;
     get env(): "LOCAL" | "BROWSERBASE";

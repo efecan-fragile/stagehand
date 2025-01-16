@@ -49,6 +49,12 @@ async function getBrowser(
   browserbaseSessionCreateParams?: Browserbase.Sessions.SessionCreateParams,
   browserbaseSessionID?: string,
   shouldUseUnsafeMode: boolean = false,
+  proxy?: {
+    server: string;
+    bypass?: string;
+    username?: string;
+    password?: string;
+  },
 ): Promise<BrowserResult> {
   if (env === "BROWSERBASE") {
     if (!apiKey) {
@@ -245,6 +251,7 @@ async function getBrowser(
         channel: "chrome",
         viewport: null,
         headless,
+        proxy,
       },
     );
 
@@ -283,6 +290,12 @@ export class Stagehand {
   private contextPath?: string;
   private llmClient: LLMClient;
   private unsafeMode: boolean;
+  private proxy?: {
+    server: string;
+    bypass?: string;
+    username?: string;
+    password?: string;
+  };
 
   constructor(
     {
@@ -302,6 +315,7 @@ export class Stagehand {
       modelName,
       modelClientOptions,
       unsafeMode,
+      proxy,
     }: ConstructorParams = {
       env: "BROWSERBASE",
     },
@@ -328,6 +342,7 @@ export class Stagehand {
     this.browserbaseSessionCreateParams = browserbaseSessionCreateParams;
     this.browserbaseSessionID = browserbaseSessionID;
     this.unsafeMode = unsafeMode ?? false;
+    this.proxy = proxy;
   }
 
   public get logger(): (logLine: LogLine) => void {
@@ -382,6 +397,7 @@ export class Stagehand {
         this.browserbaseSessionCreateParams,
         this.browserbaseSessionID,
         this.unsafeMode,
+        this.proxy,
       ).catch((e) => {
         console.error("Error in init:", e);
         const br: BrowserResult = {
