@@ -1,4 +1,4 @@
-import { test } from "@playwright/test";
+import { test } from "patchright/test";
 import { Stagehand } from "../../../../lib";
 import StagehandConfig from "../../stagehand.config";
 import { safeLocatorWithIframeSupport } from "../../../../lib/utils";

@@ -1,6 +1,6 @@
-import type { Page as PlaywrightPage } from "@playwright/test";
-import type { BrowserContext as PlaywrightContext } from "@playwright/test";
-import type { Browser as PlaywrightBrowser } from "@playwright/test";
+import type { Page as PlaywrightPage } from "patchright/test";
+import type { BrowserContext as PlaywrightContext } from "patchright/test";
+import type { Browser as PlaywrightBrowser } from "patchright/test";
 import type {
   ActOptions,
   ActResult,

@@ -2,8 +2,8 @@ import crypto from "crypto";
 import { LogLine } from "../types/log";
 import { TextAnnotation } from "../types/textannotation";
 import { z } from "zod";
-import { FrameLocator, Page } from "@playwright/test";
-import { Locator } from "@playwright/test";
+import { FrameLocator, Page } from "patchright/test";
+import { Locator } from "patchright/test";
 
 export function generateId(operation: string) {
   return crypto.createHash("sha256").update(operation).digest("hex");

@@ -1,8 +1,8 @@
 import { LogLine } from "../types/log";
 import { TextAnnotation } from "../types/textannotation";
 import { z } from "zod";
-import { Page } from "@playwright/test";
-import { Locator } from "@playwright/test";
+import { Page } from "patchright/test";
+import { Locator } from "patchright/test";
 export declare function generateId(operation: string): string;
 /**
  * `formatText` converts a list of text annotations into a formatted text representation.

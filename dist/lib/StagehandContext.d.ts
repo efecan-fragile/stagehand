@@ -1,4 +1,4 @@
-import type { BrowserContext as PlaywrightContext } from "@playwright/test";
+import type { BrowserContext as PlaywrightContext } from "patchright/test";
 import { Stagehand } from "./index";
 export declare class StagehandContext {
     private readonly stagehand;

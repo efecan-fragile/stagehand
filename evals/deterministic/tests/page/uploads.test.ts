@@ -1,5 +1,5 @@
 import { join } from "node:path";
-import { test, expect } from "@playwright/test";
+import { test, expect } from "patchright/test";
 import { Stagehand } from "../../../../lib";
 import StagehandConfig from "../../stagehand.config";
 

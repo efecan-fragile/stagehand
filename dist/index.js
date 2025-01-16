@@ -87,7 +87,7 @@ __export(lib_exports, {
 });
 module.exports = __toCommonJS(lib_exports);
 var import_sdk2 = require("@browserbasehq/sdk");
-var import_test = require("@playwright/test");
+var import_test = require("patchright/test");
 var import_crypto2 = require("crypto");
 var import_dotenv = __toESM(require("dotenv"));
 var import_fs2 = __toESM(require("fs"));
@@ -4798,63 +4798,17 @@ function getBrowser(apiKey, projectId, env = "LOCAL", headless = false, logger, 
       const context = yield import_test.chromium.launchPersistentContext(
         import_path2.default.join(tmpDir, "userdir"),
         {
-          acceptDownloads: true,
-          headless,
-          viewport: {
-            width: 1250,
-            height: 800
-          },
-          locale: "en-US",
-          timezoneId: "America/New_York",
-          deviceScaleFactor: 1,
-          args: [
-            "--enable-webgl",
-            "--use-gl=swiftshader",
-            "--enable-accelerated-2d-canvas",
-            "--disable-blink-features=AutomationControlled",
-            ...shouldUseUnsafeMode ? [
-              "--disable-web-security",
-              "--disable-site-isolation-trials",
-              "--disable-features=IsolateOrigins,site-per-process",
-              "--allow-running-insecure-content",
-              "--disable-cross-origin-isolation"
-            ] : []
-          ],
-          bypassCSP: true
+          channel: "chrome",
+          viewport: null,
+          headless
         }
       );
       logger({
         category: "init",
         message: "local browser started successfully."
       });
-      yield applyStealthScripts(context);
       return { context, contextPath: tmpDir, env: "LOCAL" };
     }
-  });
-}
-function applyStealthScripts(context) {
-  return __async(this, null, function* () {
-    yield context.addInitScript(() => {
-      Object.defineProperty(navigator, "webdriver", {
-        get: () => void 0
-      });
-      Object.defineProperty(navigator, "languages", {
-        get: () => ["en-US", "en"]
-      });
-      Object.defineProperty(navigator, "plugins", {
-        get: () => [1, 2, 3, 4, 5]
-      });
-      delete window.__playwright;
-      delete window.__pw_manual;
-      delete window.__PW_inspect;
-      Object.defineProperty(navigator, "headless", {
-        get: () => false
-      });
-      const originalQuery = window.navigator.permissions.query;
-      window.navigator.permissions.query = (parameters) => parameters.name === "notifications" ? Promise.resolve({
-        state: Notification.permission
-      }) : originalQuery(parameters);
-    });
   });
 }
 var defaultLogger = (logLine) => __async(void 0, null, function* () {

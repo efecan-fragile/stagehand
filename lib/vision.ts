@@ -1,4 +1,4 @@
-import { Page } from "@playwright/test";
+import { Page } from "patchright/test";
 import { exec } from "child_process";
 import fs from "fs";
 import path from "path";

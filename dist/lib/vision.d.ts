@@ -1,4 +1,4 @@
-import { Page } from "@playwright/test";
+import { Page } from "patchright/test";
 import { LogLine } from "../types/log";
 export declare class ScreenshotService {
     private page;

@@ -29,5 +29,5 @@ export declare const initStagehand: ({ modelName, domSettleTimeoutMs, logger, }:
 }) => Promise<{
     stagehand: Stagehand;
     logger: EvalLogger;
-    initResponse: import("@browserbasehq/stagehand/types/stagehand").InitResult;
+    initResponse: import("../lib").InitResult;
 }>;

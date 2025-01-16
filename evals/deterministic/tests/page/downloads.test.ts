@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "patchright/test";
 import AdmZip from "adm-zip";
 import StagehandConfig from "../../stagehand.config";
 import { Stagehand } from "../../../../lib";

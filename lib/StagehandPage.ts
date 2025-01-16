@@ -1,7 +1,7 @@
 import type {
   Page as PlaywrightPage,
   BrowserContext as PlaywrightContext,
-} from "@playwright/test";
+} from "patchright/test";
 import { LLMClient } from "./llm/LLMClient";
 import { ActOptions, ActResult, GotoOptions, Stagehand } from "./index";
 import { StagehandActHandler } from "./handlers/actHandler";

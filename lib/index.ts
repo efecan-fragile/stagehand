@@ -1,5 +1,5 @@
 import { Browserbase } from "@browserbasehq/sdk";
-import { chromium } from "@playwright/test";
+import { chromium } from "patchright/test";
 import { randomUUID } from "crypto";
 import dotenv from "dotenv";
 import fs from "fs";
@@ -242,31 +242,9 @@ async function getBrowser(
     const context = await chromium.launchPersistentContext(
       path.join(tmpDir, "userdir"),
       {
-        acceptDownloads: true,
-        headless: headless,
-        viewport: {
-          width: 1250,
-          height: 800,
-        },
-        locale: "en-US",
-        timezoneId: "America/New_York",
-        deviceScaleFactor: 1,
-        args: [
-          "--enable-webgl",
-          "--use-gl=swiftshader",
-          "--enable-accelerated-2d-canvas",
-          "--disable-blink-features=AutomationControlled",
-          ...(shouldUseUnsafeMode
-            ? [
-                "--disable-web-security",
-                "--disable-site-isolation-trials",
-                "--disable-features=IsolateOrigins,site-per-process",
-                "--allow-running-insecure-content",
-                "--disable-cross-origin-isolation",
-              ]
-            : []),
-        ],
-        bypassCSP: true,
+        channel: "chrome",
+        viewport: null,
+        headless,
       },
     );
 
@@ -275,47 +253,8 @@ async function getBrowser(
       message: "local browser started successfully.",
     });
 
-    await applyStealthScripts(context);
-
     return { context, contextPath: tmpDir, env: "LOCAL" };
   }
-}
-
-async function applyStealthScripts(context: BrowserContext) {
-  await context.addInitScript(() => {
-    // Override the navigator.webdriver property
-    Object.defineProperty(navigator, "webdriver", {
-      get: () => undefined,
-    });
-
-    // Mock languages and plugins to mimic a real browser
-    Object.defineProperty(navigator, "languages", {
-      get: () => ["en-US", "en"],
-    });
-
-    Object.defineProperty(navigator, "plugins", {
-      get: () => [1, 2, 3, 4, 5],
-    });
-
-    // Remove Playwright-specific properties
-    delete window.__playwright;
-    delete window.__pw_manual;
-    delete window.__PW_inspect;
-
-    // Redefine the headless property
-    Object.defineProperty(navigator, "headless", {
-      get: () => false,
-    });
-
-    // Override the permissions API
-    const originalQuery = window.navigator.permissions.query;
-    window.navigator.permissions.query = (parameters) =>
-      parameters.name === "notifications"
-        ? Promise.resolve({
-            state: Notification.permission,
-          } as PermissionStatus)
-        : originalQuery(parameters);
-  });
 }
 
 const defaultLogger = async (logLine: LogLine) => {

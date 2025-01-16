@@ -1,6 +1,6 @@
 import Browserbase from "@browserbasehq/sdk";
 import { Stagehand } from "../../../../lib";
-import { expect, test } from "@playwright/test";
+import { expect, test } from "patchright/test";
 import StagehandConfig from "../../stagehand.config";
 
 // Configuration

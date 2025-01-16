@@ -1,4 +1,4 @@
-import type { Page as PlaywrightPage, BrowserContext as PlaywrightContext } from "@playwright/test";
+import type { Page as PlaywrightPage, BrowserContext as PlaywrightContext } from "patchright/test";
 import { LLMClient } from "./llm/LLMClient";
 import { ActOptions, ActResult, Stagehand } from "./index";
 import { StagehandContext } from "./StagehandContext";

@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "patchright/test";
 import { Stagehand } from "../../../../lib"; // Adjust the relative path as needed
 import StagehandConfig from "../../stagehand.config";
 
