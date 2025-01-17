@@ -22,12 +22,16 @@ import { EvalLogger } from "./logger";
  * - logger: The provided logger, associated with the Stagehand instance
  * - initResponse: Any response data returned by Stagehand initialization
  */
-export declare const initStagehand: ({ modelName, domSettleTimeoutMs, logger, }: {
-    modelName: AvailableModel;
-    domSettleTimeoutMs?: number;
-    logger: EvalLogger;
+export declare const initStagehand: ({
+  modelName,
+  domSettleTimeoutMs,
+  logger,
+}: {
+  modelName: AvailableModel;
+  domSettleTimeoutMs?: number;
+  logger: EvalLogger;
 }) => Promise<{
-    stagehand: Stagehand;
-    logger: EvalLogger;
-    initResponse: import("../lib").InitResult;
+  stagehand: Stagehand;
+  logger: EvalLogger;
+  initResponse: import("../lib").InitResult;
 }>;

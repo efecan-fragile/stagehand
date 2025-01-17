@@ -49,6 +49,8 @@ async function getBrowser(
   browserbaseSessionCreateParams?: Browserbase.Sessions.SessionCreateParams,
   browserbaseSessionID?: string,
   shouldUseUnsafeMode: boolean = false,
+  videoDir?: string,
+  harPath?: string,
   proxy?: {
     server: string;
     bypass?: string;
@@ -252,6 +254,8 @@ async function getBrowser(
         viewport: null,
         headless,
         proxy,
+        recordVideo: videoDir ? { dir: videoDir } : undefined,
+        recordHar: harPath ? { path: harPath } : undefined,
         args: shouldUseUnsafeMode
           ? [
               "--disable-web-security",
@@ -299,6 +303,8 @@ export class Stagehand {
   private contextPath?: string;
   private llmClient: LLMClient;
   private unsafeMode: boolean;
+  private videoDir?: string;
+  private harPath?: string;
   private proxy?: {
     server: string;
     bypass?: string;
@@ -324,6 +330,8 @@ export class Stagehand {
       modelName,
       modelClientOptions,
       unsafeMode,
+      videoDir,
+      harPath,
       proxy,
     }: ConstructorParams = {
       env: "BROWSERBASE",
@@ -351,6 +359,8 @@ export class Stagehand {
     this.browserbaseSessionCreateParams = browserbaseSessionCreateParams;
     this.browserbaseSessionID = browserbaseSessionID;
     this.unsafeMode = unsafeMode ?? false;
+    this.videoDir = videoDir;
+    this.harPath = harPath;
     this.proxy = proxy;
   }
 
@@ -406,6 +416,8 @@ export class Stagehand {
         this.browserbaseSessionCreateParams,
         this.browserbaseSessionID,
         this.unsafeMode,
+        this.videoDir,
+        this.harPath,
         this.proxy,
       ).catch((e) => {
         console.error("Error in init:", e);

@@ -23,6 +23,8 @@ export interface ConstructorParams {
   llmClient?: LLMClient;
   modelClientOptions?: ClientOptions;
   unsafeMode?: boolean;
+  videoDir?: string;
+  harPath?: string;
   proxy?: {
     server: string;
     bypass?: string;

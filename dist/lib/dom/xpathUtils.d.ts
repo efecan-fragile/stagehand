@@ -10,4 +10,6 @@ export declare function escapeXPathString(value: string): string;
  * @param element - The target DOM element.
  * @returns An array of XPaths.
  */
-export declare function generateXPathsForElement(element: ChildNode): Promise<(string | string[])[]>;
+export declare function generateXPathsForElement(
+  element: ChildNode,
+): Promise<(string | string[])[]>;

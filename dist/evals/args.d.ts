@@ -11,4 +11,9 @@ declare const useTextExtract: boolean;
  */
 declare let filterByCategory: string | null;
 declare let filterByEvalName: string | null;
-export { filterByCategory, filterByEvalName, useTextExtract, DEFAULT_EVAL_CATEGORIES, };
+export {
+  filterByCategory,
+  filterByEvalName,
+  useTextExtract,
+  DEFAULT_EVAL_CATEGORIES,
+};

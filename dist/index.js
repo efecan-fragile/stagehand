@@ -4638,7 +4638,7 @@ var BROWSERBASE_REGION_DOMAIN = {
   "eu-central-1": "wss://connect.euc1.browserbase.com",
   "ap-southeast-1": "wss://connect.apse1.browserbase.com"
 };
-function getBrowser(apiKey, projectId, env = "LOCAL", headless = false, logger, browserbaseSessionCreateParams, browserbaseSessionID, shouldUseUnsafeMode = false, proxy) {
+function getBrowser(apiKey, projectId, env = "LOCAL", headless = false, logger, browserbaseSessionCreateParams, browserbaseSessionID, shouldUseUnsafeMode = false, videoDir, harPath, proxy) {
   return __async(this, null, function* () {
     if (env === "BROWSERBASE") {
       if (!apiKey) {
@@ -4802,6 +4802,8 @@ function getBrowser(apiKey, projectId, env = "LOCAL", headless = false, logger, 
           viewport: null,
           headless,
           proxy,
+          recordVideo: videoDir ? { dir: videoDir } : void 0,
+          recordHar: harPath ? { path: harPath } : void 0,
           args: shouldUseUnsafeMode ? [
             "--disable-web-security",
             "--disable-site-isolation-trials",

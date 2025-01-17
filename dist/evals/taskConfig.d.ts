@@ -11,8 +11,11 @@
  */
 import { AvailableModel } from "../types/model";
 declare const config: any;
-declare const tasksByName: Record<string, {
+declare const tasksByName: Record<
+  string,
+  {
     categories: string[];
-}>;
+  }
+>;
 declare const MODELS: AvailableModel[];
 export { tasksByName, MODELS, config };
