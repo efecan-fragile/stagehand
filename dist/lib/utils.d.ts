@@ -19,16 +19,7 @@ export declare function generateId(operation: string): string;
  * @param pageWidth - The width of the page in pixels, used to normalize positions.
  * @returns A string representing the text layout of the page.
  */
-export declare function formatText(
-  textAnnotations: TextAnnotation[],
-  pageWidth: number,
-): string;
+export declare function formatText(textAnnotations: TextAnnotation[], pageWidth: number): string;
 export declare function logLineToString(logLine: LogLine): string;
-export declare function validateZodSchema(
-  schema: z.ZodTypeAny,
-  data: unknown,
-): boolean;
-export declare function safeLocatorWithIframeSupport(
-  page: Page,
-  selector: string | string[],
-): Locator;
+export declare function validateZodSchema(schema: z.ZodTypeAny, data: unknown): boolean;
+export declare function safeLocatorWithIframeSupport(page: Page, selector: string | string[]): Locator;

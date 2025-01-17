@@ -72,47 +72,34 @@ import { Stagehand } from "../index";
  * Each step corresponds to specific code segments, as noted in the comments throughout the code.
  */
 export declare class StagehandExtractHandler {
-  private readonly stagehand;
-  private readonly stagehandPage;
-  private readonly logger;
-  constructor({
-    stagehand,
-    logger,
-    stagehandPage,
-  }: {
-    stagehand: Stagehand;
-    logger: (message: {
-      category?: string;
-      message: string;
-      level?: number;
-      auxiliary?: {
-        [key: string]: {
-          value: string;
-          type: string;
-        };
-      };
-    }) => void;
-    stagehandPage: StagehandPage;
-  });
-  extract<T extends z.AnyZodObject>({
-    instruction,
-    schema,
-    content,
-    chunksSeen,
-    llmClient,
-    requestId,
-    domSettleTimeoutMs,
-    useTextExtract,
-  }: {
-    instruction: string;
-    schema: T;
-    content?: z.infer<T>;
-    chunksSeen?: Array<number>;
-    llmClient: LLMClient;
-    requestId?: string;
-    domSettleTimeoutMs?: number;
-    useTextExtract?: boolean;
-  }): Promise<z.infer<T>>;
-  private textExtract;
-  private domExtract;
+    private readonly stagehand;
+    private readonly stagehandPage;
+    private readonly logger;
+    constructor({ stagehand, logger, stagehandPage, }: {
+        stagehand: Stagehand;
+        logger: (message: {
+            category?: string;
+            message: string;
+            level?: number;
+            auxiliary?: {
+                [key: string]: {
+                    value: string;
+                    type: string;
+                };
+            };
+        }) => void;
+        stagehandPage: StagehandPage;
+    });
+    extract<T extends z.AnyZodObject>({ instruction, schema, content, chunksSeen, llmClient, requestId, domSettleTimeoutMs, useTextExtract, }: {
+        instruction: string;
+        schema: T;
+        content?: z.infer<T>;
+        chunksSeen?: Array<number>;
+        llmClient: LLMClient;
+        requestId?: string;
+        domSettleTimeoutMs?: number;
+        useTextExtract?: boolean;
+    }): Promise<z.infer<T>>;
+    private textExtract;
+    private domExtract;
 }

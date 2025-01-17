@@ -4842,6 +4842,8 @@ var Stagehand = class {
     modelName,
     modelClientOptions,
     unsafeMode,
+    videoDir,
+    harPath,
     proxy
   } = {
     env: "BROWSERBASE"
@@ -4865,6 +4867,8 @@ var Stagehand = class {
     this.browserbaseSessionCreateParams = browserbaseSessionCreateParams;
     this.browserbaseSessionID = browserbaseSessionID;
     this.unsafeMode = unsafeMode != null ? unsafeMode : false;
+    this.videoDir = videoDir;
+    this.harPath = harPath;
     this.proxy = proxy;
   }
   get logger() {
@@ -4910,6 +4914,8 @@ var Stagehand = class {
         this.browserbaseSessionCreateParams,
         this.browserbaseSessionID,
         this.unsafeMode,
+        this.videoDir,
+        this.harPath,
         this.proxy
       ).catch((e) => {
         console.error("Error in init:", e);
