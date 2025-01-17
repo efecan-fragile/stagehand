@@ -252,6 +252,15 @@ async function getBrowser(
         viewport: null,
         headless,
         proxy,
+        args: shouldUseUnsafeMode
+          ? [
+              "--disable-web-security",
+              "--disable-site-isolation-trials",
+              "--disable-features=IsolateOrigins,site-per-process",
+              "--allow-running-insecure-content",
+              "--disable-cross-origin-isolation",
+            ]
+          : undefined,
       },
     );
 

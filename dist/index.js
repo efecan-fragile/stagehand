@@ -4801,7 +4801,14 @@ function getBrowser(apiKey, projectId, env = "LOCAL", headless = false, logger, 
           channel: "chrome",
           viewport: null,
           headless,
-          proxy
+          proxy,
+          args: shouldUseUnsafeMode ? [
+            "--disable-web-security",
+            "--disable-site-isolation-trials",
+            "--disable-features=IsolateOrigins,site-per-process",
+            "--allow-running-insecure-content",
+            "--disable-cross-origin-isolation"
+          ] : void 0
         }
       );
       logger({
