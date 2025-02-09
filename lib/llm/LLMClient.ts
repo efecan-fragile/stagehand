@@ -1,14 +1,7 @@
-import {
-  ChatCompletion,
-  ChatCompletionToolChoiceOption,
-} from "openai/resources";
 import { ZodType } from "zod";
-import {
-  AnthropicTransformedResponse,
-  AvailableModel,
-  ClientOptions,
-  ToolCall,
-} from "../../types/model";
+import { LLMTool } from "../../types/llm";
+import { AvailableModel, ClientOptions } from "../../types/model";
+import { LogLine } from "../../types/log";
 
 export interface ChatMessage {
   role: "system" | "user" | "assistant";
@@ -30,15 +23,6 @@ export interface ChatMessageTextContent {
   text: string;
 }
 
-export const modelsWithVision: AvailableModel[] = [
-  "gpt-4o",
-  "gpt-4o-mini",
-  "claude-3-5-sonnet-latest",
-  "claude-3-5-sonnet-20240620",
-  "claude-3-5-sonnet-20241022",
-  "gpt-4o-2024-08-06",
-];
-
 export const AnnotatedScreenshotText =
   "This is a screenshot of the current page state with the elements annotated on it. Each element id is annotated with a number to the top left of it. Duplicate annotations at the same location are under each other vertically.";
 
@@ -56,27 +40,59 @@ export interface ChatCompletionOptions {
     name: string;
     schema: ZodType;
   };
-  tools?: ToolCall[];
-  tool_choice?: "auto" | ChatCompletionToolChoiceOption;
+  tools?: LLMTool[];
+  tool_choice?: "auto" | "none" | "required";
   maxTokens?: number;
   requestId: string;
 }
 
-export type LLMResponse = AnthropicTransformedResponse | ChatCompletion;
+export type LLMResponse = {
+  id: string;
+  object: string;
+  created: number;
+  model: string;
+  choices: {
+    index: number;
+    message: {
+      role: string;
+      content: string | null;
+      tool_calls: {
+        id: string;
+        type: string;
+        function: {
+          name: string;
+          arguments: string;
+        };
+      }[];
+    };
+    finish_reason: string;
+  }[];
+  usage: {
+    prompt_tokens: number;
+    completion_tokens: number;
+    total_tokens: number;
+  };
+};
+
+export interface CreateChatCompletionOptions {
+  options: ChatCompletionOptions;
+  logger: (message: LogLine) => void;
+  retries?: number;
+}
 
 export abstract class LLMClient {
   public type: "openai" | "anthropic" | string;
   public modelName: AvailableModel;
   public hasVision: boolean;
   public clientOptions: ClientOptions;
+  public userProvidedInstructions?: string;
 
-  constructor(modelName: AvailableModel) {
+  constructor(modelName: AvailableModel, userProvidedInstructions?: string) {
     this.modelName = modelName;
-    this.hasVision = modelsWithVision.includes(modelName);
+    this.userProvidedInstructions = userProvidedInstructions;
   }
 
   abstract createChatCompletion<T = LLMResponse>(
-    options: ChatCompletionOptions,
+    options: CreateChatCompletionOptions,
   ): Promise<T>;
-  abstract logger: (message: { category?: string; message: string }) => void;
 }

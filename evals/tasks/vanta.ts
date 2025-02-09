@@ -1,5 +1,5 @@
-import { initStagehand } from "../initStagehand";
-import { EvalFunction } from "../../types/evals";
+import { EvalFunction } from "@/types/evals";
+import { initStagehand } from "@/evals/initStagehand";
 
 export const vanta: EvalFunction = async ({ modelName, logger }) => {
   const { stagehand, initResponse } = await initStagehand({
@@ -12,7 +12,7 @@ export const vanta: EvalFunction = async ({ modelName, logger }) => {
   await stagehand.page.goto("https://www.vanta.com/");
   await stagehand.page.act({ action: "close the cookies popup" });
 
-  const observations = await stagehand.page.observe();
+  const observations = await stagehand.page.observe({ onlyVisible: true });
 
   if (observations.length === 0) {
     await stagehand.close();

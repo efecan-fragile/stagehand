@@ -1,12 +1,13 @@
 import type {
   Page as PlaywrightPage,
   BrowserContext as PlaywrightContext,
+  CDPSession,
 } from "patchright/test";
 import { LLMClient } from "./llm/LLMClient";
 import { ActOptions, ActResult, GotoOptions, Stagehand } from "./index";
 import { StagehandActHandler } from "./handlers/actHandler";
 import { StagehandContext } from "./StagehandContext";
-import { Page } from "../types/page";
+import { Page, defaultExtractSchema } from "../types/page";
 import {
   ExtractOptions,
   ExtractResult,
@@ -25,46 +26,64 @@ export class StagehandPage {
   private extractHandler: StagehandExtractHandler;
   private observeHandler: StagehandObserveHandler;
   private llmClient: LLMClient;
+  private cdpClient: CDPSession | null = null;
 
   constructor(
     page: PlaywrightPage,
     stagehand: Stagehand,
     context: StagehandContext,
     llmClient: LLMClient,
+    userProvidedInstructions?: string,
   ) {
     this.intPage = Object.assign(page, {
       act: () => {
-        throw new Error("act() is not implemented on the base page object");
+        throw new Error(
+          "You seem to be calling `act` on a page in an uninitialized `Stagehand` object. Ensure you are running `await stagehand.init()` on the Stagehand object before referencing the `page` object.",
+        );
       },
       extract: () => {
-        throw new Error("extract() is not implemented on the base page object");
+        throw new Error(
+          "You seem to be calling `extract` on a page in an uninitialized `Stagehand` object. Ensure you are running `await stagehand.init()` on the Stagehand object before referencing the `page` object.",
+        );
       },
       observe: () => {
-        throw new Error("observe() is not implemented on the base page object");
+        throw new Error(
+          "You seem to be calling `observe` on a page in an uninitialized `Stagehand` object. Ensure you are running `await stagehand.init()` on the Stagehand object before referencing the `page` object.",
+        );
+      },
+      on: () => {
+        throw new Error(
+          "You seem to be referencing a page in an uninitialized `Stagehand` object. Ensure you are running `await stagehand.init()` on the Stagehand object before referencing the `page` object.",
+        );
       },
     });
     this.stagehand = stagehand;
     this.intContext = context;
-    this.actHandler = new StagehandActHandler({
-      verbose: this.stagehand.verbose,
-      llmProvider: this.stagehand.llmProvider,
-      enableCaching: this.stagehand.enableCaching,
-      logger: this.stagehand.logger,
-      stagehandPage: this,
-      stagehandContext: this.intContext,
-      llmClient: llmClient,
-    });
-    this.extractHandler = new StagehandExtractHandler({
-      stagehand: this.stagehand,
-      logger: this.stagehand.logger,
-      stagehandPage: this,
-    });
-    this.observeHandler = new StagehandObserveHandler({
-      stagehand: this.stagehand,
-      logger: this.stagehand.logger,
-      stagehandPage: this,
-    });
     this.llmClient = llmClient;
+    if (this.llmClient) {
+      this.actHandler = new StagehandActHandler({
+        verbose: this.stagehand.verbose,
+        llmProvider: this.stagehand.llmProvider,
+        enableCaching: this.stagehand.enableCaching,
+        logger: this.stagehand.logger,
+        stagehandPage: this,
+        stagehandContext: this.intContext,
+        llmClient: llmClient,
+        userProvidedInstructions,
+      });
+      this.extractHandler = new StagehandExtractHandler({
+        stagehand: this.stagehand,
+        logger: this.stagehand.logger,
+        stagehandPage: this,
+        userProvidedInstructions,
+      });
+      this.observeHandler = new StagehandObserveHandler({
+        stagehand: this.stagehand,
+        logger: this.stagehand.logger,
+        stagehandPage: this,
+        userProvidedInstructions,
+      });
+    }
   }
 
   async init(): Promise<StagehandPage> {
@@ -87,27 +106,64 @@ export class StagehandPage {
             return result;
           };
 
-        if (prop === "act") {
-          return async (options: ActOptions) => {
-            return this.act(options);
-          };
+        if (this.llmClient) {
+          if (prop === "act") {
+            return async (options: ActOptions) => {
+              return this.act(options);
+            };
+          }
+          if (prop === "extract") {
+            return async (options: ExtractOptions<z.AnyZodObject>) => {
+              return this.extract(options);
+            };
+          }
+          if (prop === "observe") {
+            return async (options: ObserveOptions) => {
+              return this.observe(options);
+            };
+          }
+        } else {
+          if (prop === "act" || prop === "extract" || prop === "observe") {
+            return () => {
+              throw new Error(
+                "No LLM API key or LLM Client configured. An LLM API key or a custom LLM Client is required to use act, extract, or observe.",
+              );
+            };
+          }
         }
 
-        if (prop === "extract") {
-          return async (options: ExtractOptions<z.AnyZodObject>) => {
-            return this.extract(options);
-          };
-        }
+        if (prop === "on") {
+          return (event: string, listener: (param: unknown) => void) => {
+            if (event === "popup") {
+              return this.context.on("page", async (page) => {
+                const newContext = await StagehandContext.init(
+                  page.context(),
+                  stagehand,
+                );
+                const newStagehandPage = new StagehandPage(
+                  page,
+                  stagehand,
+                  newContext,
+                  this.llmClient,
+                );
 
-        if (prop === "observe") {
-          return async (options: ObserveOptions) => {
-            return this.observe(options);
+                await newStagehandPage.init();
+
+                listener(newStagehandPage.page);
+              });
+            }
+
+            return this.context.on(
+              event as keyof PlaywrightPage["on"],
+              listener,
+            );
           };
         }
 
         return target[prop as keyof PlaywrightPage];
       },
     });
+
     await this._waitForSettledDom();
     return this;
   }
@@ -229,19 +285,60 @@ export class StagehandPage {
     }
   }
 
-  async act({
-    action,
-    modelName,
-    modelClientOptions,
-    useVision = "fallback",
-    variables = {},
-    domSettleTimeoutMs,
-  }: ActOptions): Promise<ActResult> {
+  async act(
+    actionOrOptions: string | ActOptions | ObserveResult,
+  ): Promise<ActResult> {
     if (!this.actHandler) {
       throw new Error("Act handler not initialized");
     }
 
-    useVision = useVision ?? "fallback";
+    // If actionOrOptions is an ObserveResult, we call actFromObserveResult.
+    // We need to ensure there is both a selector and a method in the ObserveResult.
+    if (typeof actionOrOptions === "object" && actionOrOptions !== null) {
+      // If it has selector AND method => treat as ObserveResult
+      if ("selector" in actionOrOptions && "method" in actionOrOptions) {
+        const observeResult = actionOrOptions as ObserveResult;
+        // validate observeResult.method, etc.
+        return this.actHandler.actFromObserveResult(observeResult);
+      } else {
+        // If it's an object but no selector/method,
+        // check that it's truly ActOptions (i.e., has an `action` field).
+        if (!("action" in actionOrOptions)) {
+          throw new Error(
+            "Invalid argument. Valid arguments are: a string, an ActOptions object, " +
+              "or an ObserveResult WITH 'selector' and 'method' fields.",
+          );
+        }
+      }
+    } else if (typeof actionOrOptions === "string") {
+      // Convert string to ActOptions
+      actionOrOptions = { action: actionOrOptions };
+    } else {
+      throw new Error(
+        "Invalid argument: you may have called act with an empty ObserveResult.\n" +
+          "Valid arguments are: a string, an ActOptions object, or an ObserveResult " +
+          "WITH 'selector' and 'method' fields.",
+      );
+    }
+
+    const {
+      action,
+      modelName,
+      modelClientOptions,
+      useVision, // still destructure this but will not pass it on
+      variables = {},
+      domSettleTimeoutMs,
+    } = actionOrOptions;
+
+    if (typeof useVision !== "undefined") {
+      this.stagehand.log({
+        category: "deprecation",
+        message:
+          "Warning: vision is not supported in this version of Stagehand",
+        level: 1,
+      });
+    }
+
     const requestId = Math.random().toString(36).substring(2);
     const llmClient: LLMClient = modelName
       ? this.stagehand.llmProvider.getClient(modelName, modelClientOptions)
@@ -267,13 +364,12 @@ export class StagehandPage {
       },
     });
 
+    // `useVision` is no longer passed to the handler
     return this.actHandler
       .act({
         action,
         llmClient,
         chunksSeen: [],
-        useVision,
-        verifierUseVision: useVision !== false,
         requestId,
         variables,
         previousSelectors: [],
@@ -305,17 +401,29 @@ export class StagehandPage {
       });
   }
 
-  async extract<T extends z.AnyZodObject>({
-    instruction,
-    schema,
-    modelName,
-    modelClientOptions,
-    domSettleTimeoutMs,
-    useTextExtract,
-  }: ExtractOptions<T>): Promise<ExtractResult<T>> {
+  async extract<T extends z.AnyZodObject = typeof defaultExtractSchema>(
+    instructionOrOptions: string | ExtractOptions<T>,
+  ): Promise<ExtractResult<T>> {
     if (!this.extractHandler) {
       throw new Error("Extract handler not initialized");
     }
+
+    const options: ExtractOptions<T> =
+      typeof instructionOrOptions === "string"
+        ? {
+            instruction: instructionOrOptions,
+            schema: defaultExtractSchema as T,
+          }
+        : instructionOrOptions;
+
+    const {
+      instruction,
+      schema,
+      modelName,
+      modelClientOptions,
+      domSettleTimeoutMs,
+      useTextExtract,
+    } = options;
 
     const requestId = Math.random().toString(36).substring(2);
     const llmClient = modelName
@@ -376,17 +484,56 @@ export class StagehandPage {
       });
   }
 
-  async observe(options?: ObserveOptions): Promise<ObserveResult[]> {
+  async observe(
+    instructionOrOptions?: string | ObserveOptions,
+  ): Promise<ObserveResult[]> {
     if (!this.observeHandler) {
       throw new Error("Observe handler not initialized");
     }
 
+    const options: ObserveOptions =
+      typeof instructionOrOptions === "string"
+        ? { instruction: instructionOrOptions }
+        : instructionOrOptions || {};
+
+    const {
+      instruction,
+      modelName,
+      modelClientOptions,
+      useVision, // still destructure but will not pass it on
+      domSettleTimeoutMs,
+      returnAction = false,
+      onlyVisible = false,
+      useAccessibilityTree,
+    } = options;
+
+    if (useAccessibilityTree !== undefined) {
+      this.stagehand.log({
+        category: "deprecation",
+        message:
+          "useAccessibilityTree is deprecated.\n" +
+          "  To use accessibility tree as context:\n" +
+          "    1. Set onlyVisible to false (default)\n" +
+          "    2. Don't declare useAccessibilityTree",
+        level: 1,
+      });
+      throw new Error(
+        "useAccessibilityTree is deprecated. Use onlyVisible instead.",
+      );
+    }
+
+    if (typeof useVision !== "undefined") {
+      this.stagehand.log({
+        category: "deprecation",
+        message:
+          "Warning: vision is not supported in this version of Stagehand",
+        level: 1,
+      });
+    }
+
     const requestId = Math.random().toString(36).substring(2);
-    const llmClient = options?.modelName
-      ? this.stagehand.llmProvider.getClient(
-          options.modelName,
-          options.modelClientOptions,
-        )
+    const llmClient = modelName
+      ? this.stagehand.llmProvider.getClient(modelName, modelClientOptions)
       : this.llmClient;
 
     this.stagehand.log({
@@ -395,7 +542,7 @@ export class StagehandPage {
       level: 1,
       auxiliary: {
         instruction: {
-          value: options?.instruction,
+          value: instruction,
           type: "string",
         },
         requestId: {
@@ -406,19 +553,21 @@ export class StagehandPage {
           value: llmClient.modelName,
           type: "string",
         },
+        onlyVisible: {
+          value: onlyVisible ? "true" : "false",
+          type: "boolean",
+        },
       },
     });
 
     return this.observeHandler
       .observe({
-        instruction:
-          options?.instruction ??
-          "Find actions that can be performed on this page.",
+        instruction,
         llmClient,
-        useVision: options?.useVision ?? false,
-        fullPage: false,
         requestId,
-        domSettleTimeoutMs: options?.domSettleTimeoutMs,
+        domSettleTimeoutMs,
+        returnAction,
+        onlyVisible,
       })
       .catch((e) => {
         this.stagehand.log({
@@ -439,7 +588,7 @@ export class StagehandPage {
               type: "string",
             },
             instruction: {
-              value: options?.instruction,
+              value: instruction,
               type: "string",
             },
           },
@@ -451,5 +600,32 @@ export class StagehandPage {
 
         throw e;
       });
+  }
+
+  async getCDPClient(): Promise<CDPSession> {
+    if (!this.cdpClient) {
+      this.cdpClient = await this.context.newCDPSession(this.page);
+    }
+    return this.cdpClient;
+  }
+
+  async sendCDP<T>(
+    command: string,
+    args?: Record<string, unknown>,
+  ): Promise<T> {
+    const client = await this.getCDPClient();
+    // Type assertion needed because CDP command strings are not fully typed
+    return client.send(
+      command as Parameters<CDPSession["send"]>[0],
+      args || {},
+    ) as Promise<T>;
+  }
+
+  async enableCDP(domain: string): Promise<void> {
+    await this.sendCDP(`${domain}.enable`, {});
+  }
+
+  async disableCDP(domain: string): Promise<void> {
+    await this.sendCDP(`${domain}.disable`, {});
   }
 }

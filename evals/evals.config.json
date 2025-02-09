@@ -1,8 +1,16 @@
 {
   "tasks": [
     {
+      "name": "extract_repo_name",
+      "categories": ["extract"]
+    },
+    {
       "name": "amazon_add_to_cart",
       "categories": ["act"]
+    },
+    {
+      "name": "instructions",
+      "categories": ["combination"]
     },
     {
       "name": "bidnet",
@@ -119,10 +127,6 @@
       "categories": ["experimental"]
     },
     {
-      "name": "ibm",
-      "categories": ["experimental"]
-    },
-    {
       "name": "rakuten_jp",
       "categories": ["experimental"]
     },
@@ -156,8 +160,8 @@
       "categories": ["extract"]
     },
     {
-      "name": "extract_regulations",
-      "categories": ["extract"]
+      "name": "extract_csa",
+      "categories": ["text_extract"]
     },
     {
       "name": "extract_resistor_info",
@@ -192,7 +196,6 @@
       "name": "vanta_h",
       "categories": ["observe"]
     },
-
     {
       "name": "extract_area_codes",
       "categories": ["text_extract"]
@@ -202,8 +205,40 @@
       "categories": ["text_extract"]
     },
     {
-      "name": "extract_research_reports",
+      "name": "extract_jstor_news",
       "categories": ["text_extract"]
+    },
+    {
+      "name": "extract_apartments",
+      "categories": ["text_extract"]
+    },
+    {
+      "name": "extract_zillow",
+      "categories": ["text_extract"]
+    },
+    {
+      "name": "observe_github",
+      "categories": ["observe"]
+    },
+    {
+      "name": "observe_vantechjournal",
+      "categories": ["observe"]
+    },
+    {
+      "name": "observe_amazon_add_to_cart",
+      "categories": ["observe"]
+    },
+    {
+      "name": "observe_simple_google_search",
+      "categories": ["observe"]
+    },
+    {
+      "name": "observe_yc_startup",
+      "categories": ["observe"]
+    },
+    {
+      "name": "observe_taxes",
+      "categories": ["observe"]
     }
   ]
 }

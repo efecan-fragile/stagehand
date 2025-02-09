@@ -1,3 +1,5 @@
+import { StagehandContainer } from "./StagehandContainer";
+
 export {};
 declare global {
   interface Window {
@@ -25,6 +27,7 @@ declare global {
     ) => void;
     findElementWithIframeSupport: (xpath: string | string[]) => Element;
     scrollToHeight: (height: number) => Promise<void>;
+    createStagehandContainer: (obj: Window | HTMLElement) => StagehandContainer;
     waitForDomSettle: () => Promise<void>;
     __playwright?: unknown;
     __pw_manual?: unknown;
@@ -39,5 +42,6 @@ declare global {
       width: number;
       height: number;
     }>;
+    getScrollableElementXpaths: (topN?: number) => Promise<(string | string[])[]>;
   }
 }

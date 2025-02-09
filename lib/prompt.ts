@@ -1,4 +1,4 @@
-import OpenAI from "openai";
+import { LLMTool } from "../types/llm";
 import { ChatMessage } from "./llm/LLMClient";
 
 // act
@@ -12,7 +12,7 @@ You will receive:
 2. the steps that you've taken so far
 3. a list of active DOM elements in this chunk to consider to get closer to the goal. 
 4. Optionally, a list of variable names that the user has provided that you may use to accomplish the goal. To use the variables, you must use the special <|VARIABLE_NAME|> syntax.
-
+5. Optionally, custom instructions will be provided by the user. If the user's instructions are not relevant to the current task, ignore them. Otherwise, make sure to adhere to them.
 
 ## Your Goal / Specification
 You have 2 tools that you can call: doAction, and skipSection. Do action only performs Playwright actions. Do exactly what the user's goal is. Do not perform any other actions or exceed the scope of the goal.
@@ -21,7 +21,7 @@ If the user's goal will be accomplished after running the playwright action, set
 Note 1: If there is a popup on the page for cookies or advertising that has nothing to do with the goal, try to close it first before proceeding. As this can block the goal from being completed.
 Note 2: Sometimes what your are looking for is hidden behind and element you need to interact with. For example, sliders, buttons, etc...
 
-Again, if the user's goal will be accomplished after running the playwright action, set completed to true.
+Again, if the user's goal will be accomplished after running the playwright action, set completed to true. Also, if the user provides custom instructions, it is imperative that you follow them no matter what.
 `;
 
 const verifyActCompletionSystemPrompt = `
@@ -31,7 +31,6 @@ You are a browser automation assistant. The job has given you a goal and a list 
 You will receive:
 1. The user's goal: A clear description of what the user wants to achieve.
 2. Steps taken so far: A list of actions that have been performed up to this point.
-3. An image of the current page
 
 # Your Task
 Analyze the provided information to determine if the user's goal has been fully completed.
@@ -46,22 +45,62 @@ Return a boolean value:
 - Look for evidence of errors on the page or something having gone wrong in completing the goal. If one does not exist, return true.
 `;
 
-// ## Examples for completion check
-// ### Example 1
-// 1. User's goal: "input data scientist into role"
-// 2. Steps you've taken so far: "The role input field was filled with 'data scientist'."
-// 3. Active DOM elements: ["<input id="c9" class="VfPpkd-fmcmS-wGMbrd " aria-expanded="false" data-axe="mdc-autocomplete">data scientist</input>", "<button class="VfPpkd-LgbsSe VfPpkd-LgbsSe-OWXEXe-INsAgc lJ9FBc nDgy9d" type="submit">Search</button>"]
-
-// Output: Will need to have completed set to true. Nothing else matters.
-// Reasoning: The goal the user set has already been accomplished. We should not take any extra actions outside of the scope of the goal (for example, clicking on the search button is an invalid action - ie: not acceptable).
-
-// ### Example 2
-// 1. User's goal: "Sign up for the newsletter"
-// 2. Steps you've taken so far: ["The email input field was filled with 'test@test.com'."]
-// 3. Active DOM elements: ["<input type='email' id='newsletter-email' placeholder='Enter your email'></input>", "<button id='subscribe-button'>Subscribe</button>"]
-
-// Output: Will need to have click on the subscribe button as action. And completed set to false.
-// Reasoning: There might be an error when trying to submit the form and you need to make sure the goal is accomplished properly. So you set completed to false.
+// actTools definition using upstream style
+export const actTools: LLMTool[] = [
+  {
+    type: "function",
+    name: "doAction",
+    description: "execute the next playwright step that directly accomplishes the goal",
+    parameters: {
+      type: "object",
+      required: ["method", "element", "args", "step", "completed"],
+      properties: {
+        method: {
+          type: "string",
+          description: "The playwright function to call."
+        },
+        element: {
+          type: "number",
+          description: "The element number to act on"
+        },
+        args: {
+          type: "array",
+          description: "The required arguments",
+          items: {
+            type: "string",
+            description: "The argument to pass to the function"
+          }
+        },
+        step: {
+          type: "string",
+          description: "human readable description of the step that is taken in the past tense. Please be very detailed."
+        },
+        why: {
+          type: "string",
+          description: "why is this step taken? how does it advance the goal?"
+        },
+        completed: {
+          type: "boolean",
+          description: "true if the goal should be accomplished after this step"
+        }
+      }
+    }
+  },
+  {
+    type: "function",
+    name: "skipSection",
+    description: "skips this area of the webpage because the current goal cannot be accomplished here",
+    parameters: {
+      type: "object",
+      properties: {
+        reason: {
+          type: "string",
+          description: "reason that no action is taken"
+        }
+      }
+    }
+  },
+];
 
 export function buildVerifyActCompletionSystemPrompt(): ChatMessage {
   return {
@@ -96,10 +135,32 @@ ${domElements}
   };
 }
 
-export function buildActSystemPrompt(): ChatMessage {
+export function buildUserInstructionsString(
+  userProvidedInstructions?: string,
+): string {
+  if (!userProvidedInstructions) {
+    return "";
+  }
+
+  return `\n\n# Custom Instructions Provided by the User
+    
+Please keep the user's instructions in mind when performing actions. If the user's instructions are not relevant to the current task, ignore them.
+
+User Instructions:
+${userProvidedInstructions}`;
+}
+
+export function buildActSystemPrompt(
+  userProvidedInstructions?: string,
+): ChatMessage {
   return {
     role: "system",
-    content: actSystemPrompt,
+    content: [
+      actSystemPrompt,
+      buildUserInstructionsString(userProvidedInstructions),
+    ]
+      .filter(Boolean)
+      .join("\n\n"),
   };
 }
 
@@ -124,8 +185,8 @@ ${domElements}
     actUserPrompt += `
 # Variables
 ${Object.keys(variables)
-  .map((key) => `<|${key.toUpperCase()}|>`)
-  .join("\n")}
+      .map((key) => `<|${key.toUpperCase()}|>`)
+      .join("\n")}
 `;
   }
 
@@ -135,75 +196,10 @@ ${Object.keys(variables)
   };
 }
 
-export const actTools: Array<OpenAI.ChatCompletionTool> = [
-  {
-    type: "function",
-    function: {
-      name: "doAction",
-      description:
-        "execute the next playwright step that directly accomplishes the goal",
-      parameters: {
-        type: "object",
-        required: ["method", "element", "args", "step", "completed"],
-        properties: {
-          step: {
-            type: "string",
-            description:
-              "human readable description of the step that is taken in the past tense. Please be very detailed.",
-          },
-          why: {
-            type: "string",
-            description:
-              "why is this step taken? how does it advance the goal?",
-          },
-          method: {
-            type: "string",
-            description: "The playwright function to call.",
-          },
-          element: {
-            type: "number",
-            description: "The element number to act on",
-          },
-          args: {
-            type: "array",
-            description: "The required arguments",
-            items: {
-              type: "string",
-              description: "The argument to pass to the function",
-            },
-          },
-          completed: {
-            type: "boolean",
-            description:
-              "true if the goal should be accomplished after this step",
-          },
-        },
-      },
-    },
-  },
-  {
-    type: "function",
-    function: {
-      name: "skipSection",
-      description:
-        "skips this area of the webpage because the current goal cannot be accomplished here",
-      parameters: {
-        type: "object",
-        properties: {
-          reason: {
-            type: "string",
-            description: "reason that no action is taken",
-          },
-        },
-      },
-    },
-  },
-];
-
-// extract
 export function buildExtractSystemPrompt(
   isUsingPrintExtractedDataTool: boolean = false,
   useTextExtract: boolean = true,
+  userProvidedInstructions?: string,
 ): ChatMessage {
   const baseContent = `You are extracting content on behalf of a user.
   If a user asks you to extract a 'list' of information, or 'all' information, 
@@ -237,10 +233,14 @@ ONLY print the content using the print_extracted_data tool provided.
     do not miss any important information.`
     : "";
 
+  const userInstructions = buildUserInstructionsString(
+    userProvidedInstructions,
+  );
+
   const content =
     `${baseContent}${contentDetail}\n\n${instructions}\n${toolInstructions}${
       additionalInstructions ? `\n\n${additionalInstructions}` : ""
-    }`.replace(/\s+/g, " ");
+    }${userInstructions ? `\n\n${userInstructions}` : ""}`.replace(/\s+/g, " ");
 
   return {
     role: "system",
@@ -257,9 +257,7 @@ export function buildExtractUserPrompt(
 DOM: ${domElements}`;
 
   if (isUsingPrintExtractedDataTool) {
-    content += `
-ONLY print the content using the print_extracted_data tool provided.
-ONLY print the content using the print_extracted_data tool provided.`;
+    content += `\nONLY print the content using the print_extracted_data tool provided.\nONLY print the content using the print_extracted_data tool provided.`;
   }
 
   return {
@@ -329,48 +327,39 @@ chunksTotal: ${chunksTotal}`,
 }
 
 // observe
-const observeSystemPrompt = `
+export function buildObserveSystemPrompt(
+  userProvidedInstructions?: string,
+  isUsingAccessibilityTree = false,
+): ChatMessage {
+  const observeSystemPrompt = `
 You are helping the user automate the browser by finding elements based on what the user wants to observe in the page.
 You will be given:
 1. a instruction of elements to observe
-2. a numbered list of possible elements or an annotated image of the page
+2. ${
+    isUsingAccessibilityTree
+      ? "a hierarchical accessibility tree showing the semantic structure of the page. The tree is a hybrid of the DOM and the accessibility tree."
+      : "a numbered list of possible elements"
+  }
 
-Return an array of elements that match the instruction.
-`;
-export function buildObserveSystemPrompt(): ChatMessage {
+Return an array of elements that match the instruction if they exist, otherwise return an empty array.`;
   const content = observeSystemPrompt.replace(/\s+/g, " ");
 
   return {
     role: "system",
-    content,
+    content: [content, buildUserInstructionsString(userProvidedInstructions)]
+      .filter(Boolean)
+      .join("\n\n"),
   };
 }
 
 export function buildObserveUserMessage(
   instruction: string,
   domElements: string,
+  isUsingAccessibilityTree = false,
 ): ChatMessage {
   return {
     role: "user",
     content: `instruction: ${instruction}
-DOM: ${domElements}`,
-  };
-}
-
-// ask
-const askSystemPrompt = `
-you are a simple question answering assistent given the user's question. respond with only the answer.
-`;
-export function buildAskSystemPrompt(): ChatMessage {
-  return {
-    role: "system",
-    content: askSystemPrompt,
-  };
-}
-
-export function buildAskUserPrompt(question: string): ChatMessage {
-  return {
-    role: "user",
-    content: `question: ${question}`,
+${isUsingAccessibilityTree ? "Accessibility Tree" : "DOM"}: ${domElements}`,
   };
 }

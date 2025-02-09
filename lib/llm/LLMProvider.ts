@@ -16,6 +16,7 @@ export class LLMProvider {
     "gpt-4o-2024-08-06": "openai",
     "o1-mini": "openai",
     "o1-preview": "openai",
+    "o3-mini": "openai",
     "claude-3-5-sonnet-latest": "anthropic",
     "claude-3-5-sonnet-20240620": "anthropic",
     "claude-3-5-sonnet-20241022": "anthropic",
@@ -61,21 +62,21 @@ export class LLMProvider {
 
     switch (provider) {
       case "openai":
-        return new OpenAIClient(
-          this.logger,
-          this.enableCaching,
-          this.cache,
+        return new OpenAIClient({
+          logger: this.logger,
+          enableCaching: this.enableCaching,
+          cache: this.cache,
           modelName,
           clientOptions,
-        );
+        });
       case "anthropic":
-        return new AnthropicClient(
-          this.logger,
-          this.enableCaching,
-          this.cache,
+        return new AnthropicClient({
+          logger: this.logger,
+          enableCaching: this.enableCaching,
+          cache: this.cache,
           modelName,
           clientOptions,
-        );
+        });
       default:
         throw new Error(`Unsupported provider: ${provider}`);
     }

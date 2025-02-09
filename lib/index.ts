@@ -297,7 +297,7 @@ export class Stagehand {
   private apiKey: string | undefined;
   private projectId: string | undefined;
   // We want external logger to accept async functions
-  private externalLogger?: (logLine: LogLine) => void | Promise<void>;
+  private externalLogger?: (logLine: LogLine) => void;
   private browserbaseSessionCreateParams?: Browserbase.Sessions.SessionCreateParams;
   public variables: { [key: string]: unknown };
   private contextPath?: string;
@@ -311,6 +311,7 @@ export class Stagehand {
     username?: string;
     password?: string;
   };
+  private userProvidedInstructions?: string;
 
   constructor(
     {
@@ -333,9 +334,10 @@ export class Stagehand {
       videoDir,
       harPath,
       proxy,
+      systemPrompt
     }: ConstructorParams = {
       env: "BROWSERBASE",
-    },
+    }
   ) {
     this.externalLogger = logger || defaultLogger;
     this.enableCaching =
@@ -348,12 +350,20 @@ export class Stagehand {
     this.projectId = projectId ?? process.env.BROWSERBASE_PROJECT_ID;
     this.verbose = verbose ?? 0;
     this.debugDom = debugDom ?? false;
-    this.llmClient =
-      llmClient ||
-      this.llmProvider.getClient(
-        modelName ?? DEFAULT_MODEL_NAME,
-        modelClientOptions,
-      );
+    if (llmClient) {
+      this.llmClient = llmClient;
+    } else {
+      try {
+        // try to set a default LLM client
+        this.llmClient = this.llmProvider.getClient(
+          modelName ?? DEFAULT_MODEL_NAME,
+          modelClientOptions
+        );
+      } catch {
+        this.llmClient = undefined;
+      }
+    }
+
     this.domSettleTimeoutMs = domSettleTimeoutMs ?? 30_000;
     this.headless = headless ?? false;
     this.browserbaseSessionCreateParams = browserbaseSessionCreateParams;
@@ -362,6 +372,7 @@ export class Stagehand {
     this.videoDir = videoDir;
     this.harPath = harPath;
     this.proxy = proxy;
+    this.userProvidedInstructions = systemPrompt;
   }
 
   public get logger(): (logLine: LogLine) => void {
@@ -439,6 +450,7 @@ export class Stagehand {
       this,
       this.stagehandContext,
       this.llmClient,
+      this.userProvidedInstructions,
     ).init();
 
     // Set the browser to headless mode if specified
@@ -611,3 +623,4 @@ export * from "../types/model";
 export * from "../types/playwright";
 export * from "../types/stagehand";
 export * from "../types/page";
+export * from "./llm/LLMClient";

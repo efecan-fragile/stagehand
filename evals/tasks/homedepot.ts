@@ -1,5 +1,5 @@
-import { EvalFunction } from "../../types/evals";
-import { initStagehand } from "../initStagehand";
+import { EvalFunction } from "@/types/evals";
+import { initStagehand } from "@/evals/initStagehand";
 import { z } from "zod";
 
 export const homedepot: EvalFunction = async ({
@@ -17,10 +17,10 @@ export const homedepot: EvalFunction = async ({
 
   try {
     await stagehand.page.goto("https://www.homedepot.com/");
-    await stagehand.page.act({ action: "search for gas grills" });
-    await stagehand.page.act({ action: "click on the best selling gas grill" });
-    await stagehand.page.act({ action: "click on the Product Details" });
-    await stagehand.page.act({ action: "find the Primary Burner BTU" });
+    await stagehand.page.act("search for gas grills");
+    await stagehand.page.act("click on the best selling gas grill");
+    await stagehand.page.act("click on the Product Details");
+    await stagehand.page.act("find the Primary Burner BTU");
 
     const productSpecs = await stagehand.page.extract({
       instruction: "Extract the Primary exact Burner BTU of the product",

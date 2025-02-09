@@ -31,6 +31,10 @@ export interface ConstructorParams {
     username?: string;
     password?: string;
   };
+  /**
+   * Instructions for stagehand.
+   */
+  systemPrompt?: string;
 }
 
 export interface InitOptions {
@@ -64,7 +68,8 @@ export interface ActOptions {
   action: string;
   modelName?: AvailableModel;
   modelClientOptions?: ClientOptions;
-  useVision?: "fallback" | boolean;
+  /** @deprecated Vision is not supported in this version of Stagehand. */
+  useVision?: boolean;
   variables?: Record<string, string>;
   domSettleTimeoutMs?: number;
 }
@@ -90,11 +95,19 @@ export interface ObserveOptions {
   instruction?: string;
   modelName?: AvailableModel;
   modelClientOptions?: ClientOptions;
+  /** @deprecated Vision is not supported in this version of Stagehand. */
   useVision?: boolean;
   domSettleTimeoutMs?: number;
+  returnAction?: boolean;
+  onlyVisible?: boolean;
+  /** @deprecated `useAccessibilityTree` is now deprecated. Use `onlyVisible` instead. */
+  useAccessibilityTree?: boolean;
 }
 
 export interface ObserveResult {
   selector: string;
   description: string;
+  backendNodeId?: number;
+  method?: string;
+  arguments?: string[];
 }

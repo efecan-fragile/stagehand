@@ -1,5 +1,7 @@
 import { generateXPathsForElement as generateXPaths } from "./xpathUtils";
-import { calculateViewportHeight } from "./utils";
+import { calculateViewportHeight, canElementScroll } from "./utils";
+import { createStagehandContainer } from "./containerFactory";
+import { StagehandContainer } from "./StagehandContainer";
 
 export function isElementNode(node: Node): node is Element {
   return node.nodeType === Node.ELEMENT_NODE;
@@ -16,10 +18,84 @@ interface VisibilityResult {
   visible: boolean;
   reason: string;
 }
+/**
+ * Finds and returns a list of scrollable elements on the page,
+ * ordered from the element with the largest scrollHeight to the smallest.
+ *
+ * @param topN Optional maximum number of scrollable elements to return.
+ *             If not provided, all found scrollable elements are returned.
+ * @returns An array of HTMLElements sorted by descending scrollHeight.
+ */
+export function getScrollableElements(topN?: number): HTMLElement[] {
+  // Get the root <html> element
+  const docEl = document.documentElement;
+
+  // 1) Initialize an array to hold all scrollable elements.
+  //    Always include the root <html> element as a fallback.
+  const scrollableElements: HTMLElement[] = [docEl];
+
+  // 2) Scan all elements to find potential scrollable containers.
+  //    A candidate must have a scrollable overflow style and extra scrollable content.
+  const allElements = document.querySelectorAll<HTMLElement>("*");
+  for (const elem of allElements) {
+    const style = window.getComputedStyle(elem);
+    const overflowY = style.overflowY;
+
+    const isPotentiallyScrollable =
+      overflowY === "auto" || overflowY === "scroll" || overflowY === "overlay";
+
+    if (isPotentiallyScrollable) {
+      const candidateScrollDiff = elem.scrollHeight - elem.clientHeight;
+      // Only consider this element if it actually has extra scrollable content
+      // and it can truly scroll.
+      if (candidateScrollDiff > 0 && canElementScroll(elem)) {
+        scrollableElements.push(elem);
+      }
+    }
+  }
+
+  // 3) Sort the scrollable elements from largest scrollHeight to smallest.
+  scrollableElements.sort((a, b) => b.scrollHeight - a.scrollHeight);
+
+  // 4) If a topN limit is specified, return only the first topN elements.
+  if (topN !== undefined) {
+    return scrollableElements.slice(0, topN);
+  }
+
+  // Return all found scrollable elements if no limit is provided.
+  return scrollableElements;
+}
+
+/**
+ * Calls getScrollableElements, then for each element calls generateXPaths,
+ * and returns the first XPath for each.
+ *
+ * @param topN (optional) integer limit on how many scrollable elements to process
+ * @returns string[] list of XPaths (1 for each scrollable element)
+ */
+export async function getScrollableElementXpaths(
+  topN?: number,
+): Promise<(string | string[])[]> {
+  const scrollableElems = getScrollableElements(topN);
+  const xpaths = [];
+  for (const elem of scrollableElems) {
+    const allXPaths = await generateXPaths(elem);
+    const firstXPath = allXPaths?.[0] || "";
+    xpaths.push(firstXPath);
+  }
+  return xpaths;
+}
 
 export async function processDom(chunksSeen: Array<number>) {
   const { chunk, chunksArray } = await pickChunk(chunksSeen);
-  const { outputString, selectorMap } = await processElements(chunk);
+  const container = createStagehandContainer(window);
+
+  const { outputString, selectorMap } = await processElements(
+    chunk,
+    true,
+    0,
+    container,
+  );
 
   console.log(
     `Stagehand (Browser Process): Extracted dom elements:\n${outputString}`,
@@ -36,19 +112,28 @@ export async function processDom(chunksSeen: Array<number>) {
 export async function processAllOfDom() {
   console.log("Stagehand (Browser Process): Processing all of DOM");
 
-  const viewportHeight = calculateViewportHeight();
-  const documentHeight = document.documentElement.scrollHeight;
+  const mainScrollableElements = getScrollableElements(1);
+  const mainScrollable = mainScrollableElements[0];
+
+  const container =
+    mainScrollable === document.documentElement
+      ? createStagehandContainer(window)
+      : createStagehandContainer(mainScrollable);
+
+  const viewportHeight = container.getViewportHeight();
+  const documentHeight = container.getScrollHeight();
   const totalChunks = Math.ceil(documentHeight / viewportHeight);
 
   let index = 0;
   const results = [];
   for (let chunk = 0; chunk < totalChunks; chunk++) {
-    const result = await processElements(chunk, true, index);
+    // Pass the container to processElements
+    const result = await processElements(chunk, true, index, container);
     results.push(result);
     index += Object.keys(result.selectorMap).length;
   }
 
-  await scrollToHeight(0);
+  await container.scrollTo(0);
 
   const allOutputString = results.map((result) => result.outputString).join("");
   const allSelectorMap = results.reduce(
@@ -108,34 +193,37 @@ function getIFrameDocument(iframe: HTMLIFrameElement): Document | null {
 
 export async function processElements(
   chunk: number,
-  scrollToChunk = true,
-  indexOffset = 0,
-  debug = false,
+  scrollToChunk: boolean = true,
+  indexOffset: number = 0,
+  container?: StagehandContainer,
+  debug: boolean = false,
 ): Promise<{
   outputString: string;
   selectorMap: Record<number, (string | string[])[]>;
 }> {
   console.time("processElements:total");
-  const viewportHeight = calculateViewportHeight();
+
+  // If no container given, default to the entire page
+  const stagehandContainer = container ?? createStagehandContainer(window);
+
+  const viewportHeight = stagehandContainer.getViewportHeight();
+  const totalScrollHeight = stagehandContainer.getScrollHeight();
+
   const chunkHeight = viewportHeight * chunk;
-
-  // Calculate the maximum scrollable offset
-  const maxScrollTop = document.documentElement.scrollHeight - viewportHeight;
-
-  // Adjust the offsetTop to not exceed the maximum scrollable offset
+  const maxScrollTop = totalScrollHeight - viewportHeight;
   const offsetTop = Math.min(chunkHeight, maxScrollTop);
 
   if (scrollToChunk) {
     console.time("processElements:scroll");
-    await scrollToHeight(offsetTop);
+    await stagehandContainer.scrollTo(offsetTop);
     console.timeEnd("processElements:scroll");
   }
-
-  const candidateElements: Array<ChildNode> = [];
-  const DOMQueue: Array<ChildNode> = [...document.body.childNodes];
-
   console.log("Stagehand (Browser Process): Generating candidate elements");
   console.time("processElements:findCandidates");
+
+  // NOTE: we still gather candidate elems from the entire body
+  const DOMQueue: ChildNode[] = [...document.body.childNodes];
+  const candidateElements: ChildNode[] = [];
 
   while (DOMQueue.length > 0) {
     const element = DOMQueue.pop();
@@ -425,11 +513,7 @@ export function createTextBoundingBoxes(): void {
       if (element.closest(".stagehand-nav, .stagehand-marker")) {
         return;
       }
-      if (
-        ["SCRIPT", "STYLE", "IFRAME", "INPUT", "TEXTAREA"].includes(
-          element.tagName,
-        )
-      ) {
+      if (["SCRIPT", "STYLE", "IFRAME", "INPUT"].includes(element.tagName)) {
         return;
       }
 
@@ -568,12 +652,12 @@ export function getElementBoundingBoxes(xpath: string | string[]): Array<{
 window.processDom = processDom;
 window.processAllOfDom = processAllOfDom;
 window.processElements = processElements;
-window.scrollToHeight = scrollToHeight;
 window.storeDOM = storeDOM;
 window.restoreDOM = restoreDOM;
 window.createTextBoundingBoxes = createTextBoundingBoxes;
 window.getElementBoundingBoxes = getElementBoundingBoxes;
-
+window.createStagehandContainer = createStagehandContainer;
+window.getScrollableElementXpaths = getScrollableElementXpaths;
 const leafElementDenyList = ["SVG", "IFRAME", "SCRIPT", "STYLE", "LINK"];
 
 const interactiveElementTypes = [
@@ -810,6 +894,13 @@ export function isTextVisible(node: ChildNode): VisibilityResult {
     return {
       visible: false,
       reason: "Text node is outside of the visible viewport in the top window",
+    };
+  }
+  const parent = node.parentElement;
+  if (!parent) {
+    return {
+      visible: false,
+      reason: "No parent element found for text node",
     };
   }
 

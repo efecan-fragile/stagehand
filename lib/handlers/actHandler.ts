@@ -9,10 +9,15 @@ import { act, fillInVariables, verifyActCompletion } from "../inference";
 import { LLMClient } from "../llm/LLMClient";
 import { LLMProvider } from "../llm/LLMProvider";
 import { generateId, safeLocatorWithIframeSupport } from "../utils";
-import { ScreenshotService } from "../vision";
 import { StagehandPage } from "../StagehandPage";
 import { StagehandContext } from "../StagehandContext";
+import { ObserveResult } from "@/types/stagehand";
 
+/**
+ * NOTE: Vision support has been removed from this version of Stagehand.
+ * If useVision or verifierUseVision is set to true, a warning is logged and
+ * the flow continues as if vision = false.
+ */
 export class StagehandActHandler {
   private readonly stagehandPage: StagehandPage;
   private readonly verbose: 0 | 1 | 2;
@@ -23,6 +28,7 @@ export class StagehandActHandler {
   private readonly actions: {
     [key: string]: { result: string; action: string };
   };
+  private readonly userProvidedInstructions?: string;
 
   constructor({
     verbose,
@@ -30,6 +36,7 @@ export class StagehandActHandler {
     enableCaching,
     logger,
     stagehandPage,
+    userProvidedInstructions,
   }: {
     verbose: 0 | 1 | 2;
     llmProvider: LLMProvider;
@@ -38,6 +45,7 @@ export class StagehandActHandler {
     llmClient: LLMClient;
     stagehandPage: StagehandPage;
     stagehandContext: StagehandContext;
+    userProvidedInstructions?: string;
   }) {
     this.verbose = verbose;
     this.llmProvider = llmProvider;
@@ -46,6 +54,58 @@ export class StagehandActHandler {
     this.actionCache = enableCaching ? new ActionCache(this.logger) : undefined;
     this.actions = {};
     this.stagehandPage = stagehandPage;
+    this.userProvidedInstructions = userProvidedInstructions;
+  }
+
+  /**
+   * Perform an immediate Playwright action based on an ObserveResult object
+   * that was returned from `page.observe(...)`.
+   */
+  public async actFromObserveResult(
+    observe: ObserveResult,
+  ): Promise<{ success: boolean; message: string; action: string }> {
+    this.logger({
+      category: "action",
+      message: "Performing act from an ObserveResult",
+      level: 1,
+      auxiliary: {
+        observeResult: {
+          value: JSON.stringify(observe),
+          type: "object",
+        },
+      },
+    });
+
+    const method = observe.method;
+    const args = observe.arguments ?? [];
+    // remove the xpath prefix on the selector
+    const selector = observe.selector.replace("xpath=", "");
+
+    try {
+      await this._performPlaywrightMethod(method, args, selector);
+
+      return {
+        success: true,
+        message: `Action [${method}] performed successfully on selector: ${selector}`,
+        action: observe.description || `ObserveResult action (${method})`,
+      };
+    } catch (err) {
+      this.logger({
+        category: "action",
+        message: "Error performing act from an ObserveResult",
+        level: 1,
+        auxiliary: {
+          error: { value: err.message, type: "string" },
+          trace: { value: err.stack, type: "string" },
+          observeResult: { value: JSON.stringify(observe), type: "object" },
+        },
+      });
+      return {
+        success: false,
+        message: `Failed to perform act: ${err.message}`,
+        action: observe.description || `ObserveResult action (${method})`,
+      };
+    }
   }
 
   private async _recordAction(action: string, result: string): Promise<string> {
@@ -58,7 +118,6 @@ export class StagehandActHandler {
 
   private async _verifyActionCompletion({
     completed,
-    verifierUseVision,
     requestId,
     action,
     steps,
@@ -66,7 +125,6 @@ export class StagehandActHandler {
     domSettleTimeoutMs,
   }: {
     completed: boolean;
-    verifierUseVision: boolean;
     requestId: string;
     action: string;
     steps: string;
@@ -82,9 +140,8 @@ export class StagehandActHandler {
     // o1 is overkill for this task + this task uses a lot of tokens. So we switch it 4o
     let verifyLLmClient = llmClient;
     if (
-      llmClient.modelName === "o1-mini" ||
-      llmClient.modelName === "o1-preview" ||
-      llmClient.modelName.startsWith("o1-")
+      llmClient.modelName.startsWith("o1") ||
+      llmClient.modelName.startsWith("o3")
     ) {
       verifyLLmClient = this.llmProvider.getClient(
         "gpt-4o",
@@ -92,9 +149,10 @@ export class StagehandActHandler {
       );
     }
 
-    const { selectorMap } = await this.stagehandPage.page.evaluate(() => {
-      return window.processAllOfDom();
-    });
+    const { outputString: domElements } =
+      await this.stagehandPage.page.evaluate(() => {
+        return window.processAllOfDom();
+      });
 
     let actionCompleted = false;
     if (completed) {
@@ -111,59 +169,12 @@ export class StagehandActHandler {
         },
       });
 
-      let domElements: string | undefined = undefined;
-      let fullpageScreenshot: Buffer | undefined = undefined;
-
-      if (verifierUseVision) {
-        try {
-          const screenshotService = new ScreenshotService(
-            this.stagehandPage.page,
-            selectorMap,
-            this.verbose,
-            this.logger,
-          );
-
-          fullpageScreenshot = await screenshotService.getScreenshot(true, 15);
-        } catch (e) {
-          this.logger({
-            category: "action",
-            message: "error getting full page screenshot. trying again...",
-            level: 1,
-            auxiliary: {
-              error: {
-                value: e.message,
-                type: "string",
-              },
-              trace: {
-                value: e.stack,
-                type: "string",
-              },
-            },
-          });
-
-          const screenshotService = new ScreenshotService(
-            this.stagehandPage.page,
-            selectorMap,
-            this.verbose,
-            this.logger,
-          );
-
-          fullpageScreenshot = await screenshotService.getScreenshot(true, 15);
-        }
-      } else {
-        ({ outputString: domElements } = await this.stagehandPage.page.evaluate(
-          () => {
-            return window.processAllOfDom();
-          },
-        ));
-      }
-
+      // Always use text-based DOM verification (no vision).
       actionCompleted = await verifyActCompletion({
         goal: action,
         steps,
         llmProvider: this.llmProvider,
         llmClient: verifyLLmClient,
-        screenshot: fullpageScreenshot,
         domElements,
         logger: this.logger,
         requestId,
@@ -192,12 +203,12 @@ export class StagehandActHandler {
   private async _performPlaywrightMethod(
     method: string,
     args: unknown[],
-    xpath: string | string[],
+    _xpath: string | string[],
     domSettleTimeoutMs?: number,
   ) {
     const locator = safeLocatorWithIframeSupport(
       this.stagehandPage.page,
-      xpath,
+      _xpath,
     );
     const initialUrl = this.stagehandPage.page.url();
 
@@ -207,7 +218,7 @@ export class StagehandActHandler {
       level: 2,
       auxiliary: {
         xpath: {
-          value: JSON.stringify(xpath),
+          value: typeof _xpath === 'string' ? _xpath : JSON.stringify(_xpath),
           type: "string",
         },
         method: {
@@ -224,7 +235,7 @@ export class StagehandActHandler {
         level: 2,
         auxiliary: {
           xpath: {
-            value: JSON.stringify(xpath),
+            value: typeof _xpath === 'string' ? _xpath : JSON.stringify(_xpath),
             type: "string",
           },
         },
@@ -249,7 +260,7 @@ export class StagehandActHandler {
                   type: "string",
                 },
                 xpath: {
-                  value: JSON.stringify(xpath),
+                  value: typeof _xpath === 'string' ? _xpath : JSON.stringify(_xpath),
                   type: "string",
                 },
               },
@@ -270,7 +281,7 @@ export class StagehandActHandler {
               type: "string",
             },
             xpath: {
-              value: JSON.stringify(xpath),
+              value: typeof _xpath === 'string' ? _xpath : JSON.stringify(_xpath),
               type: "string",
             },
           },
@@ -305,7 +316,7 @@ export class StagehandActHandler {
               type: "string",
             },
             xpath: {
-              value: JSON.stringify(xpath),
+              value: typeof _xpath === 'string' ? _xpath : JSON.stringify(_xpath),
               type: "string",
             },
           },
@@ -340,7 +351,196 @@ export class StagehandActHandler {
 
         throw new PlaywrightCommandException(e.message);
       }
+    } else if (method === "click") {
+      // Log the URL before clicking
+      this.logger({
+        category: "action",
+        message: "page URL before click",
+        level: 2,
+        auxiliary: {
+          url: {
+            value: this.stagehandPage.page.url(),
+            type: "string",
+          },
+        },
+      });
+
+      // if the element is a radio button, we should try to click the label instead
+      try {
+        const isRadio = await locator.evaluate((el) => {
+          return el instanceof HTMLInputElement && el.type === "radio";
+        });
+
+        const clickArg = args.length ? args[0] : undefined;
+
+        if (isRadio) {
+          // if it's a radio button, try to find a label to click
+          const inputId = await locator.evaluate((el) => el.id);
+          let labelLocator;
+
+          if (inputId) {
+            // if the radio button has an ID, try label[for="thatId"]
+            labelLocator = this.stagehandPage.page.locator(
+              `label[for="${inputId}"]`,
+            );
+          }
+          if (!labelLocator || (await labelLocator.count()) < 1) {
+            // if no label was found or the label doesn't exist, check if
+            // there is an ancestor <label>
+            labelLocator = this.stagehandPage.page
+              .locator(`xpath=${_xpath}/ancestor::label`)
+              .first();
+          }
+          if ((await labelLocator.count()) < 1) {
+            // if still no label, try checking for a following-sibling or preceding-sibling label
+            labelLocator = locator
+              .locator(`xpath=following-sibling::label`)
+              .first();
+            if ((await labelLocator.count()) < 1) {
+              labelLocator = locator
+                .locator(`xpath=preceding-sibling::label`)
+                .first();
+            }
+          }
+          if ((await labelLocator.count()) > 0) {
+            // if we found a label, click it
+            await labelLocator.click(clickArg);
+          } else {
+            // otherwise, just click the radio button itself
+            await locator.click(clickArg);
+          }
+        } else {
+          // here we just do a normal click if it's not a radio input
+          const clickArg = args.length ? args[0] : undefined;
+          await locator.click(clickArg);
+        }
+      } catch (e) {
+        this.logger({
+          category: "action",
+          message: "error performing click",
+          level: 1,
+          auxiliary: {
+            error: {
+              value: e.message,
+              type: "string",
+            },
+            trace: {
+              value: e.stack,
+              type: "string",
+            },
+            xpath: {
+              value: typeof _xpath === 'string' ? _xpath : JSON.stringify(_xpath),
+              type: "string",
+            },
+            method: {
+              value: method,
+              type: "string",
+            },
+            args: {
+              value: JSON.stringify(args),
+              type: "object",
+            },
+          },
+        });
+
+        throw new PlaywrightCommandException(e.message);
+      }
+
+      // Handle navigation if a new page is opened
+      this.logger({
+        category: "action",
+        message: "clicking element, checking for page navigation",
+        level: 1,
+        auxiliary: {
+          xpath: {
+            value: typeof _xpath === 'string' ? _xpath : JSON.stringify(_xpath),
+            type: "string",
+          },
+        },
+      });
+
+      // NAVIDNOTE: Should this happen before we wait for locator[method]?
+      const newOpenedTab = await Promise.race([
+        new Promise<Page | null>((resolve) => {
+          // TODO: This is a hack to get the new page
+          // We should find a better way to do this
+          this.stagehandPage.context.once("page", (page) => resolve(page));
+          setTimeout(() => resolve(null), 1_500);
+        }),
+      ]);
+
+      this.logger({
+        category: "action",
+        message: "clicked element",
+        level: 1,
+        auxiliary: {
+          newOpenedTab: {
+            value: newOpenedTab ? "opened a new tab" : "no new tabs opened",
+            type: "string",
+          },
+        },
+      });
+
+      if (newOpenedTab) {
+        this.logger({
+          category: "action",
+          message: "new page detected (new tab) with URL",
+          level: 1,
+          auxiliary: {
+            url: {
+              value: newOpenedTab.url(),
+              type: "string",
+            },
+          },
+        });
+        await newOpenedTab.close();
+        await this.stagehandPage.page.goto(newOpenedTab.url());
+        await this.stagehandPage.page.waitForLoadState("domcontentloaded");
+        await this.stagehandPage._waitForSettledDom(domSettleTimeoutMs);
+      }
+
+      await Promise.race([
+        this.stagehandPage.page.waitForLoadState("networkidle"),
+        new Promise((resolve) => setTimeout(resolve, 5_000)),
+      ]).catch((e) => {
+        this.logger({
+          category: "action",
+          message: "network idle timeout hit",
+          level: 1,
+          auxiliary: {
+            trace: {
+              value: e.stack,
+              type: "string",
+            },
+            message: {
+              value: e.message,
+              type: "string",
+            },
+          },
+        });
+      });
+
+      this.logger({
+        category: "action",
+        message: "finished waiting for (possible) page navigation",
+        level: 1,
+      });
+
+      if (this.stagehandPage.page.url() !== initialUrl) {
+        this.logger({
+          category: "action",
+          message: "new page detected with URL",
+          level: 1,
+          auxiliary: {
+            url: {
+              value: this.stagehandPage.page.url(),
+              type: "string",
+            },
+          },
+        });
+      }
     } else if (typeof locator[method as keyof typeof locator] === "function") {
+      // Fallback: any other locator method
       // Log current URL before action
       this.logger({
         category: "action",
@@ -376,7 +576,7 @@ export class StagehandActHandler {
               type: "string",
             },
             xpath: {
-              value: JSON.stringify(xpath),
+              value: typeof _xpath === 'string' ? _xpath : JSON.stringify(_xpath),
               type: "string",
             },
             method: {
@@ -391,102 +591,6 @@ export class StagehandActHandler {
         });
 
         throw new PlaywrightCommandException(e.message);
-      }
-
-      // Handle navigation if a new page is opened
-      if (method === "click") {
-        this.logger({
-          category: "action",
-          message: "clicking element, checking for page navigation",
-          level: 1,
-          auxiliary: {
-            xpath: {
-              value: JSON.stringify(xpath),
-              type: "string",
-            },
-          },
-        });
-
-        // NAVIDNOTE: Should this happen before we wait for locator[method]?
-        const newOpenedTab = await Promise.race([
-          new Promise<Page | null>((resolve) => {
-            // TODO: This is a hack to get the new page
-            // We should find a better way to do this
-            this.stagehandPage.context.once("page", (page) => resolve(page));
-            setTimeout(() => resolve(null), 1_500);
-          }),
-        ]);
-
-        this.logger({
-          category: "action",
-          message: "clicked element",
-          level: 1,
-          auxiliary: {
-            newOpenedTab: {
-              value: newOpenedTab ? "opened a new tab" : "no new tabs opened",
-              type: "string",
-            },
-          },
-        });
-
-        if (newOpenedTab) {
-          this.logger({
-            category: "action",
-            message: "new page detected (new tab) with URL",
-            level: 1,
-            auxiliary: {
-              url: {
-                value: newOpenedTab.url(),
-                type: "string",
-              },
-            },
-          });
-          await newOpenedTab.close();
-          await this.stagehandPage.page.goto(newOpenedTab.url());
-          await this.stagehandPage.page.waitForLoadState("domcontentloaded");
-          await this.stagehandPage._waitForSettledDom(domSettleTimeoutMs);
-        }
-
-        await Promise.race([
-          this.stagehandPage.page.waitForLoadState("networkidle"),
-          new Promise((resolve) => setTimeout(resolve, 5_000)),
-        ]).catch((e) => {
-          this.logger({
-            category: "action",
-            message: "network idle timeout hit",
-            level: 1,
-            auxiliary: {
-              trace: {
-                value: e.stack,
-                type: "string",
-              },
-              message: {
-                value: e.message,
-                type: "string",
-              },
-            },
-          });
-        });
-
-        this.logger({
-          category: "action",
-          message: "finished waiting for (possible) page navigation",
-          level: 1,
-        });
-
-        if (this.stagehandPage.page.url() !== initialUrl) {
-          this.logger({
-            category: "action",
-            message: "new page detected with URL",
-            level: 1,
-            auxiliary: {
-              url: {
-                value: this.stagehandPage.page.url(),
-                type: "string",
-              },
-            },
-          });
-        }
       }
     } else {
       this.logger({
@@ -534,47 +638,6 @@ export class StagehandActHandler {
       });
 
       const outerHtml = clone.outerHTML;
-
-      //   const variables = {
-      //     // Replace with your actual variables and their values
-      //     // Example:
-      //     username: "JohnDoe",
-      //     email: "john@example.com",
-      //   };
-
-      //   // Function to replace variable values with variable names
-      //   const replaceVariables = (element: Element) => {
-      //     if (element instanceof HTMLElement) {
-      //       for (const [key, value] of Object.entries(variables)) {
-      //         if (value) {
-      //           element.innerText = element.innerText.replace(
-      //             new RegExp(value, "g"),
-      //             key,
-      //           );
-      //         }
-      //       }
-      //     }
-
-      //     if (
-      //       element instanceof HTMLInputElement ||
-      //       element instanceof HTMLTextAreaElement
-      //     ) {
-      //       for (const [key, value] of Object.entries(variables)) {
-      //         if (value) {
-      //           element.value = element.value.replace(
-      //             new RegExp(value, "g"),
-      //             key,
-      //           );
-      //         }
-      //       }
-      //     }
-      //   };
-
-      //   // Replace variables in the cloned element
-      //   replaceVariables(clone);
-
-      //   // Replace variables in all child elements
-      //   clone.querySelectorAll("*").forEach(replaceVariables);
       return outerHtml.trim().replace(/\s+/g, " ");
     });
   }
@@ -597,7 +660,7 @@ export class StagehandActHandler {
         level: 1,
         auxiliary: {
           xpath: {
-            value: JSON.stringify(xpath),
+            value: typeof xpath === 'string' ? xpath : JSON.stringify(xpath),
             type: "string",
           },
           timeout_ms: {
@@ -620,7 +683,7 @@ export class StagehandActHandler {
       level: 1,
       auxiliary: {
         xpath: {
-          value: JSON.stringify(cachedStep.xpath),
+          value: typeof xpath === 'string' ? xpath : JSON.stringify(xpath),
           type: "string",
         },
         savedComponentString: {
@@ -638,7 +701,7 @@ export class StagehandActHandler {
           level: 1,
           auxiliary: {
             xpath: {
-              value: JSON.stringify(cachedStep.xpath),
+              value: typeof xpath === 'string' ? xpath : JSON.stringify(xpath),
               type: "string",
             },
           },
@@ -658,7 +721,6 @@ export class StagehandActHandler {
         },
       });
 
-      // First try to get the value (for input/textarea elements)
       const currentComponent = await this._getComponentString(locator);
 
       this.logger({
@@ -755,8 +817,6 @@ export class StagehandActHandler {
     steps,
     chunksSeen,
     llmClient,
-    useVision,
-    verifierUseVision,
     retries,
     variables,
     domSettleTimeoutMs,
@@ -767,8 +827,6 @@ export class StagehandActHandler {
     steps: string;
     chunksSeen: number[];
     llmClient: LLMClient;
-    useVision: boolean | "fallback";
-    verifierUseVision: boolean;
     retries: number;
     variables: Record<string, string>;
     domSettleTimeoutMs?: number;
@@ -897,7 +955,6 @@ export class StagehandActHandler {
         // Verify the action was completed successfully
         const actionCompleted = await this._verifyActionCompletion({
           completed: true,
-          verifierUseVision,
           llmClient,
           steps,
           requestId,
@@ -931,8 +988,6 @@ export class StagehandActHandler {
         steps,
         chunksSeen,
         llmClient,
-        useVision,
-        verifierUseVision,
         retries,
         requestId,
         variables,
@@ -967,8 +1022,6 @@ export class StagehandActHandler {
     steps = "",
     chunksSeen,
     llmClient,
-    useVision,
-    verifierUseVision,
     retries = 0,
     requestId,
     variables,
@@ -980,8 +1033,6 @@ export class StagehandActHandler {
     steps?: string;
     chunksSeen: number[];
     llmClient: LLMClient;
-    useVision: boolean | "fallback";
-    verifierUseVision: boolean;
     retries?: number;
     requestId?: string;
     variables: Record<string, string>;
@@ -1001,8 +1052,6 @@ export class StagehandActHandler {
           steps,
           chunksSeen,
           llmClient,
-          useVision,
-          verifierUseVision,
           retries,
           variables,
           domSettleTimeoutMs,
@@ -1016,8 +1065,6 @@ export class StagehandActHandler {
             steps,
             chunksSeen,
             llmClient,
-            useVision,
-            verifierUseVision,
             retries,
             requestId,
             variables,
@@ -1026,27 +1073,6 @@ export class StagehandActHandler {
             domSettleTimeoutMs,
           });
         }
-      }
-
-      if (!llmClient.hasVision && (useVision !== false || verifierUseVision)) {
-        this.logger({
-          category: "action",
-          message:
-            "model does not support vision but useVision was not false. defaulting to false.",
-          level: 1,
-          auxiliary: {
-            model: {
-              value: llmClient.modelName,
-              type: "string",
-            },
-            useVision: {
-              value: useVision.toString(),
-              type: "boolean",
-            },
-          },
-        });
-        useVision = false;
-        verifierUseVision = false;
       }
 
       this.logger({
@@ -1103,44 +1129,16 @@ export class StagehandActHandler {
         },
       });
 
-      // Prepare annotated screenshot if vision is enabled
-      let annotatedScreenshot: Buffer | undefined;
-      if (useVision === true) {
-        if (!llmClient.hasVision) {
-          this.logger({
-            category: "action",
-            message:
-              "model does not support vision. skipping vision processing.",
-            level: 1,
-            auxiliary: {
-              model: {
-                value: llmClient.modelName,
-                type: "string",
-              },
-            },
-          });
-        } else {
-          const screenshotService = new ScreenshotService(
-            this.stagehandPage.page,
-            selectorMap,
-            this.verbose,
-            this.logger,
-          );
-
-          annotatedScreenshot =
-            await screenshotService.getAnnotatedScreenshot(false);
-        }
-      }
-
+      // Run the LLM-based inference with text only
       const response = await act({
         action,
         domElements: outputString,
         steps,
         llmClient,
-        screenshot: annotatedScreenshot,
         logger: this.logger,
         requestId,
         variables,
+        userProvidedInstructions: this.userProvidedInstructions,
       });
 
       this.logger({
@@ -1181,36 +1179,6 @@ export class StagehandActHandler {
               "## Step: Scrolled to another section\n",
             chunksSeen,
             llmClient,
-            useVision,
-            verifierUseVision,
-            requestId,
-            variables,
-            previousSelectors,
-            skipActionCacheForThisStep,
-            domSettleTimeoutMs,
-          });
-        } else if (useVision === "fallback") {
-          this.logger({
-            category: "action",
-            message: "switching to vision-based processing",
-            level: 1,
-            auxiliary: {
-              useVision: {
-                value: useVision.toString(),
-                type: "string",
-              },
-            },
-          });
-          await this.stagehandPage.page.evaluate(() =>
-            window.scrollToHeight(0),
-          );
-          return await this.act({
-            action,
-            steps,
-            chunksSeen,
-            llmClient,
-            useVision: true,
-            verifierUseVision,
             requestId,
             variables,
             previousSelectors,
@@ -1294,7 +1262,7 @@ export class StagehandActHandler {
               level: 1,
               auxiliary: {
                 xpath: {
-                  value: JSON.stringify(xp),
+                  value: typeof xp === 'string' ? xp : JSON.stringify(xp),
                   type: "string",
                 },
                 error: {
@@ -1381,14 +1349,12 @@ export class StagehandActHandler {
 
         const actionCompleted = await this._verifyActionCompletion({
           completed: response.completed,
-          verifierUseVision,
           requestId,
           action,
           steps,
           llmClient,
           domSettleTimeoutMs,
         }).catch((error) => {
-          console.log("error verifying action completion", error);
           this.logger({
             category: "action",
             message:
@@ -1397,6 +1363,10 @@ export class StagehandActHandler {
             auxiliary: {
               error: {
                 value: error.message,
+                type: "string",
+              },
+              trace: {
+                value: error.stack,
                 type: "string",
               },
             },
@@ -1417,8 +1387,6 @@ export class StagehandActHandler {
             steps,
             llmClient,
             chunksSeen,
-            useVision,
-            verifierUseVision,
             requestId,
             variables,
             previousSelectors: [...previousSelectors, foundXpath],
@@ -1464,8 +1432,6 @@ export class StagehandActHandler {
             action,
             steps,
             llmClient,
-            useVision,
-            verifierUseVision,
             retries: retries + 1,
             chunksSeen,
             requestId,

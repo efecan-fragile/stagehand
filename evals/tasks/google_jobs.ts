@@ -1,5 +1,5 @@
-import { EvalFunction } from "../../types/evals";
-import { initStagehand } from "../initStagehand";
+import { EvalFunction } from "@/types/evals";
+import { initStagehand } from "@/evals/initStagehand";
 import { z } from "zod";
 
 export const google_jobs: EvalFunction = async ({
@@ -7,8 +7,9 @@ export const google_jobs: EvalFunction = async ({
   logger,
   useTextExtract,
 }) => {
+  const fixedModelName = modelName === 'o3-mini' ? 'o1-mini' : modelName;
   const { stagehand, initResponse } = await initStagehand({
-    modelName,
+    modelName: fixedModelName,
     logger,
   });
 
@@ -46,7 +47,7 @@ export const google_jobs: EvalFunction = async ({
             .nullable(),
         }),
       }),
-      modelName,
+      modelName: fixedModelName,
       useTextExtract,
     });
 

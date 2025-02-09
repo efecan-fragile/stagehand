@@ -1,4 +1,3 @@
-import { Buffer } from "buffer";
 import { LLMClient } from "../lib/llm/LLMClient";
 
 // WARNING: This is NOT to be confused with the ActParams type used in `page.act()`.
@@ -9,11 +8,11 @@ export interface ActCommandParams {
   steps?: string;
   domElements: string;
   llmClient: LLMClient;
-  screenshot?: Buffer;
   retries?: number;
   logger: (message: { category?: string; message: string }) => void;
   requestId: string;
   variables?: Record<string, string>;
+  userProvidedInstructions?: string;
 }
 
 // WARNING: This is NOT to be confused with the ActResult type used in `page.act()`.

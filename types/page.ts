@@ -9,13 +9,30 @@ import type {
   ObserveOptions,
   ObserveResult,
 } from "./stagehand";
-import type { z } from "zod";
-export interface Page extends PlaywrightPage {
-  act: (options: ActOptions) => Promise<ActResult>;
-  extract: <T extends z.AnyZodObject>(
+
+export const defaultExtractSchema = z.object({
+  extraction: z.string(),
+});
+
+export interface Page extends Omit<PlaywrightPage, "on"> {
+  act(action: string): Promise<ActResult>;
+  act(options: ActOptions): Promise<ActResult>;
+  act(observation: ObserveResult): Promise<ActResult>;
+
+  extract(
+    instruction: string,
+  ): Promise<ExtractResult<typeof defaultExtractSchema>>;
+  extract<T extends z.AnyZodObject>(
     options: ExtractOptions<T>,
-  ) => Promise<ExtractResult<T>>;
-  observe: (options?: ObserveOptions) => Promise<ObserveResult[]>;
+  ): Promise<ExtractResult<T>>;
+
+  observe(): Promise<ObserveResult[]>;
+  observe(instruction: string): Promise<ObserveResult[]>;
+  observe(options?: ObserveOptions): Promise<ObserveResult[]>;
+
+  on: {
+    (event: "popup", listener: (page: Page) => unknown): Page;
+  } & PlaywrightPage["on"];
 }
 
 // Empty type for now, but will be used in the future
