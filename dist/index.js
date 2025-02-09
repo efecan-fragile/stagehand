@@ -80,22 +80,25 @@ var __async = (__this, __arguments, generator) => {
 // lib/index.ts
 var lib_exports = {};
 __export(lib_exports, {
+  AnnotatedScreenshotText: () => AnnotatedScreenshotText,
   AvailableModelSchema: () => AvailableModelSchema,
+  LLMClient: () => LLMClient,
   PlaywrightCommandException: () => PlaywrightCommandException,
   PlaywrightCommandMethodNotSupportedException: () => PlaywrightCommandMethodNotSupportedException,
-  Stagehand: () => Stagehand
+  Stagehand: () => Stagehand,
+  defaultExtractSchema: () => defaultExtractSchema
 });
 module.exports = __toCommonJS(lib_exports);
 var import_sdk2 = require("@browserbasehq/sdk");
 var import_test = require("patchright/test");
 var import_crypto2 = require("crypto");
 var import_dotenv = __toESM(require("dotenv"));
-var import_fs2 = __toESM(require("fs"));
+var import_fs = __toESM(require("fs"));
 var import_os = __toESM(require("os"));
-var import_path2 = __toESM(require("path"));
+var import_path = __toESM(require("path"));
 
 // lib/dom/build/scriptContent.ts
-var scriptContent = '(() => {\n  // lib/dom/xpathUtils.ts\n  function findIframeElementForDocument(doc) {\n    const iframes = document.querySelectorAll("iframe");\n    for (const iframe of Array.from(iframes)) {\n      try {\n        if (iframe.contentDocument === doc || iframe.contentWindow?.document === doc) {\n          return iframe;\n        }\n      } catch {\n        continue;\n      }\n    }\n    return null;\n  }\n  function buildXPathForIframeElement(iframeEl) {\n    const parts = [];\n    let el = iframeEl;\n    while (el && el !== document.body) {\n      const siblings = el.parentElement ? Array.from(el.parentElement.children) : [];\n      let index = 1;\n      for (const sibling of siblings) {\n        if (sibling.tagName === el.tagName) {\n          if (sibling === el) {\n            break;\n          }\n          index++;\n        }\n      }\n      const tagName = el.tagName.toLowerCase();\n      parts.unshift(index > 1 ? `${tagName}[${index}]` : tagName);\n      el = el.parentElement;\n    }\n    return "//" + parts.join("/");\n  }\n  function generateIframeAwareXPathChain(element) {\n    if (!element.ownerDocument) return null;\n    if (element.ownerDocument === document) {\n      return null;\n    }\n    const iframeEl = findIframeElementForDocument(element.ownerDocument);\n    if (!iframeEl) {\n      return null;\n    }\n    const iframeXPath = buildXPathForIframeElement(iframeEl);\n    const insideIframeXPath = buildStandardXPathInsideDoc(element);\n    return [iframeXPath, insideIframeXPath];\n  }\n  function buildStandardXPathInsideDoc(node) {\n    const parts = [];\n    let current = node;\n    while (current && (isElementNode(current) || isTextNode(current))) {\n      const parent = current.parentElement;\n      if (!parent) break;\n      let index = 1;\n      const siblings = Array.from(parent.childNodes).filter(\n        (sibling) => sibling.nodeType === current.nodeType && sibling.nodeName === current.nodeName\n      );\n      for (const sibling of siblings) {\n        if (sibling === current) break;\n        index++;\n      }\n      if (current.nodeName !== "#text") {\n        const tagName = current.nodeName.toLowerCase();\n        parts.unshift(siblings.length > 1 ? `${tagName}[${index}]` : tagName);\n      }\n      current = parent;\n    }\n    return "//" + parts.join("/");\n  }\n  function getParentElement(node) {\n    return isElementNode(node) ? node.parentElement : node.parentNode;\n  }\n  function getCombinations(attributes, size) {\n    const results = [];\n    function helper(start, combo) {\n      if (combo.length === size) {\n        results.push([...combo]);\n        return;\n      }\n      for (let i = start; i < attributes.length; i++) {\n        combo.push(attributes[i]);\n        helper(i + 1, combo);\n        combo.pop();\n      }\n    }\n    helper(0, []);\n    return results;\n  }\n  function isXPathFirstResultElement(xpath, target) {\n    try {\n      const result = document.evaluate(\n        xpath,\n        document.documentElement,\n        null,\n        XPathResult.ORDERED_NODE_SNAPSHOT_TYPE,\n        null\n      );\n      return result.snapshotItem(0) === target;\n    } catch (error) {\n      console.warn(`Invalid XPath expression: ${xpath}`, error);\n      return false;\n    }\n  }\n  function escapeXPathString(value) {\n    if (value.includes("\'")) {\n      if (value.includes(\'"\')) {\n        return "concat(" + value.split(/(\'+)/).map((part) => {\n          if (part === "\'") {\n            return `"\'"`;\n          } else if (part.startsWith("\'") && part.endsWith("\'")) {\n            return `"${part}"`;\n          } else {\n            return `\'${part}\'`;\n          }\n        }).join(",") + ")";\n      } else {\n        return `"${value}"`;\n      }\n    } else {\n      return `\'${value}\'`;\n    }\n  }\n  async function generateXPathsForElement(element) {\n    if (!element) return [];\n    const iframeChain = generateIframeAwareXPathChain(element);\n    const [complexXPath, standardXPath, idBasedXPath] = await Promise.all([\n      generateComplexXPath(element),\n      generateStandardXPath(element),\n      generatedIdBasedXPath(element)\n    ]);\n    if (iframeChain) {\n      return [\n        iframeChain,\n        standardXPath,\n        ...idBasedXPath ? [idBasedXPath] : [],\n        complexXPath\n      ];\n    }\n    return [standardXPath, ...idBasedXPath ? [idBasedXPath] : [], complexXPath];\n  }\n  async function generateComplexXPath(element) {\n    const parts = [];\n    let currentElement = element;\n    while (currentElement && (isTextNode(currentElement) || isElementNode(currentElement))) {\n      if (isElementNode(currentElement)) {\n        const el = currentElement;\n        let selector = el.tagName.toLowerCase();\n        const attributePriority = [\n          "data-qa",\n          "data-component",\n          "data-role",\n          "role",\n          "aria-role",\n          "type",\n          "name",\n          "aria-label",\n          "placeholder",\n          "title",\n          "alt"\n        ];\n        const attributes = attributePriority.map((attr) => {\n          let value = el.getAttribute(attr);\n          if (attr === "href-full" && value) {\n            value = el.getAttribute("href");\n          }\n          return value ? { attr: attr === "href-full" ? "href" : attr, value } : null;\n        }).filter((attr) => attr !== null);\n        let uniqueSelector = "";\n        for (let i = 1; i <= attributes.length; i++) {\n          const combinations = getCombinations(attributes, i);\n          for (const combo of combinations) {\n            const conditions = combo.map((a) => `@${a.attr}=${escapeXPathString(a.value)}`).join(" and ");\n            const xpath2 = `//${selector}[${conditions}]`;\n            if (isXPathFirstResultElement(xpath2, el)) {\n              uniqueSelector = xpath2;\n              break;\n            }\n          }\n          if (uniqueSelector) break;\n        }\n        if (uniqueSelector) {\n          parts.unshift(uniqueSelector.replace("//", ""));\n          break;\n        } else {\n          const parent = getParentElement(el);\n          if (parent) {\n            const siblings = Array.from(parent.children).filter(\n              (sibling) => sibling.tagName === el.tagName\n            );\n            const index = siblings.indexOf(el) + 1;\n            selector += siblings.length > 1 ? `[${index}]` : "";\n          }\n          parts.unshift(selector);\n        }\n      }\n      currentElement = getParentElement(currentElement);\n    }\n    const xpath = "//" + parts.join("/");\n    return xpath;\n  }\n  async function generateStandardXPath(element) {\n    const parts = [];\n    while (element && (isTextNode(element) || isElementNode(element))) {\n      let index = 0;\n      let hasSameTypeSiblings = false;\n      const siblings = element.parentElement ? Array.from(element.parentElement.childNodes) : [];\n      for (let i = 0; i < siblings.length; i++) {\n        const sibling = siblings[i];\n        if (sibling.nodeType === element.nodeType && sibling.nodeName === element.nodeName) {\n          index = index + 1;\n          hasSameTypeSiblings = true;\n          if (sibling.isSameNode(element)) {\n            break;\n          }\n        }\n      }\n      if (element.nodeName !== "#text") {\n        const tagName = element.nodeName.toLowerCase();\n        const pathIndex = hasSameTypeSiblings ? `[${index}]` : "";\n        parts.unshift(`${tagName}${pathIndex}`);\n      }\n      element = element.parentElement;\n    }\n    return parts.length ? `/${parts.join("/")}` : "";\n  }\n  async function generatedIdBasedXPath(element) {\n    if (isElementNode(element) && element.id) {\n      return `//*[@id=\'${element.id}\']`;\n    }\n    return null;\n  }\n\n  // lib/dom/utils.ts\n  async function waitForDomSettle() {\n    return new Promise((resolve) => {\n      const createTimeout = () => {\n        return setTimeout(() => {\n          resolve();\n        }, 2e3);\n      };\n      let timeout = createTimeout();\n      const observer = new MutationObserver(() => {\n        clearTimeout(timeout);\n        timeout = createTimeout();\n      });\n      observer.observe(window.document.body, { childList: true, subtree: true });\n    });\n  }\n  window.waitForDomSettle = waitForDomSettle;\n  function calculateViewportHeight() {\n    return Math.ceil(window.innerHeight * 0.75);\n  }\n\n  // lib/dom/process.ts\n  function isElementNode(node) {\n    return node.nodeType === Node.ELEMENT_NODE;\n  }\n  function isTextNode(node) {\n    return node.nodeType === Node.TEXT_NODE && Boolean(node.textContent?.trim());\n  }\n  async function processDom(chunksSeen) {\n    const { chunk, chunksArray } = await pickChunk(chunksSeen);\n    const { outputString, selectorMap } = await processElements(chunk);\n    console.log(\n      `Stagehand (Browser Process): Extracted dom elements:\n${outputString}`\n    );\n    return {\n      outputString,\n      selectorMap,\n      chunk,\n      chunks: chunksArray\n    };\n  }\n  async function processAllOfDom() {\n    console.log("Stagehand (Browser Process): Processing all of DOM");\n    const viewportHeight = calculateViewportHeight();\n    const documentHeight = document.documentElement.scrollHeight;\n    const totalChunks = Math.ceil(documentHeight / viewportHeight);\n    let index = 0;\n    const results = [];\n    for (let chunk = 0; chunk < totalChunks; chunk++) {\n      const result = await processElements(chunk, true, index);\n      results.push(result);\n      index += Object.keys(result.selectorMap).length;\n    }\n    await scrollToHeight(0);\n    const allOutputString = results.map((result) => result.outputString).join("");\n    const allSelectorMap = results.reduce(\n      (acc, result) => ({ ...acc, ...result.selectorMap }),\n      {}\n    );\n    console.log(\n      `Stagehand (Browser Process): All dom elements: ${allOutputString}`\n    );\n    return {\n      outputString: allOutputString,\n      selectorMap: allSelectorMap\n    };\n  }\n  async function scrollToHeight(height) {\n    window.scrollTo({ top: height, left: 0, behavior: "smooth" });\n    await new Promise((resolve) => {\n      let scrollEndTimer;\n      const handleScrollEnd = () => {\n        clearTimeout(scrollEndTimer);\n        scrollEndTimer = window.setTimeout(() => {\n          window.removeEventListener("scroll", handleScrollEnd);\n          resolve();\n        }, 100);\n      };\n      window.addEventListener("scroll", handleScrollEnd, { passive: true });\n      handleScrollEnd();\n    });\n  }\n  var xpathCache = /* @__PURE__ */ new Map();\n  function getIFrameDocument(iframe) {\n    try {\n      if (iframe.contentDocument) {\n        return iframe.contentDocument;\n      }\n      if (iframe.contentWindow?.document) {\n        return iframe.contentWindow.document;\n      }\n    } catch (error) {\n      console.warn(\n        "Could not access iframe document (likely cross-origin).",\n        error\n      );\n    }\n    return null;\n  }\n  async function processElements(chunk, scrollToChunk = true, indexOffset = 0, debug = false) {\n    console.time("processElements:total");\n    const viewportHeight = calculateViewportHeight();\n    const chunkHeight = viewportHeight * chunk;\n    const maxScrollTop = document.documentElement.scrollHeight - viewportHeight;\n    const offsetTop = Math.min(chunkHeight, maxScrollTop);\n    if (scrollToChunk) {\n      console.time("processElements:scroll");\n      await scrollToHeight(offsetTop);\n      console.timeEnd("processElements:scroll");\n    }\n    const candidateElements = [];\n    const DOMQueue = [...document.body.childNodes];\n    console.log("Stagehand (Browser Process): Generating candidate elements");\n    console.time("processElements:findCandidates");\n    while (DOMQueue.length > 0) {\n      const element = DOMQueue.pop();\n      if (!element) continue;\n      let shouldAddElement = false;\n      let skipReason = "";\n      if (isElementNode(element)) {\n        const tagName = element.tagName.toLowerCase();\n        if (debug) {\n          console.debug(`[Debug] Checking element: <${tagName}>`, element);\n        }\n        if (tagName === "iframe") {\n          const iframeDoc = getIFrameDocument(element);\n          if (iframeDoc && iframeDoc.body) {\n            if (debug) {\n              console.debug(\n                "[Debug] [IFrame] Found same-origin iframe document:",\n                iframeDoc\n              );\n            }\n            DOMQueue.push(...Array.from(iframeDoc.body.childNodes));\n          } else {\n            console.warn(`Skipping cross-origin iframe: ${element}`);\n          }\n        }\n        const childrenCount = element.childNodes.length;\n        for (let i = childrenCount - 1; i >= 0; i--) {\n          const child = element.childNodes[i];\n          DOMQueue.push(child);\n        }\n        const interactive = isInteractiveElement(element);\n        const active = isActive(element);\n        const visibility = isVisible(element);\n        const isLeaf = isLeafElement(element);\n        if (debug) {\n          console.debug(\n            `[Debug] <${tagName}>: interactive=${interactive}, active=${active}, visible=${visibility.visible}, leaf=${isLeaf}, visibilityReason=${visibility.reason}`\n          );\n        }\n        if (interactive) {\n          if (!active) {\n            skipReason = "Interactive element is not active";\n          } else if (!visibility.visible) {\n            skipReason = `Interactive element is not visible: ${visibility.reason}`;\n          } else {\n            shouldAddElement = true;\n          }\n        } else if (isLeaf) {\n          if (!active) {\n            skipReason = "Leaf element is not active";\n          } else if (!visibility.visible) {\n            skipReason = `Leaf element is not visible: ${visibility.reason}`;\n          } else {\n            shouldAddElement = true;\n          }\n        } else {\n          skipReason = "Element is neither interactive nor leaf";\n        }\n      } else if (isTextNode(element)) {\n        const visibility = isTextVisible(element);\n        if (debug) {\n          const textPreview = element.textContent?.trim().substring(0, 50) + (element.textContent?.length > 50 ? "..." : "");\n          console.debug(\n            `[Debug] Checking TEXT NODE: "${textPreview}" visible=${visibility.visible}, visibilityReason=${visibility.reason}`,\n            element\n          );\n        }\n        if (!visibility.visible) {\n          skipReason = `Text node is not visible: ${visibility.reason}`;\n        } else {\n          shouldAddElement = true;\n        }\n      } else {\n        skipReason = "Node is neither an element nor a text node";\n      }\n      if (shouldAddElement) {\n        if (debug) {\n          if (isElementNode(element)) {\n            console.info(\n              `[Debug] \\u2705 Element accepted: <${element.tagName.toLowerCase()}>`,\n              element\n            );\n          } else if (isTextNode(element)) {\n            const textPreview = element.textContent?.trim().substring(0, 50) + (element.textContent?.length > 50 ? "..." : "");\n            console.info(\n              `[Debug] \\u2705 Text node accepted: "${textPreview}"`,\n              element\n            );\n          }\n        }\n        candidateElements.push(element);\n      } else if (debug) {\n        if (isElementNode(element)) {\n          console.info(\n            `[Debug] \\u274C Element skipped: <${element.tagName.toLowerCase()}> - Reason: ${skipReason}`,\n            element\n          );\n        } else if (isTextNode(element)) {\n          const textPreview = element.textContent?.trim().substring(0, 50) + (element.textContent?.length > 50 ? "..." : "");\n          console.info(\n            `[Debug] \\u274C Text node skipped: "${textPreview}" - Reason: ${skipReason}`,\n            element\n          );\n        } else {\n          console.info(\n            `[Debug] \\u274C Node skipped - Reason: ${skipReason}`,\n            element\n          );\n        }\n      }\n    }\n    console.timeEnd("processElements:findCandidates");\n    console.log(\n      `Stagehand (Browser Process): Processing candidate elements: ${candidateElements.length}`\n    );\n    const selectorMap = {};\n    let outputString = "";\n    console.time("processElements:processCandidates");\n    console.time("processElements:generateXPaths");\n    const xpathLists = await Promise.all(\n      candidateElements.map(async (element) => {\n        if (xpathCache.has(element)) {\n          return xpathCache.get(element);\n        }\n        const xpaths = await generateXPathsForElement(element);\n        xpathCache.set(element, xpaths);\n        return xpaths;\n      })\n    );\n    console.timeEnd("processElements:generateXPaths");\n    candidateElements.forEach((element, index) => {\n      const xpaths = xpathLists[index] || [];\n      let elementOutput = "";\n      if (isTextNode(element)) {\n        const textContent = element.textContent?.trim();\n        if (textContent) {\n          elementOutput += `${index + indexOffset}:${textContent}\n`;\n          if (debug) {\n            console.debug(\n              `[Debug] Outputting text node at index ${index + indexOffset}:`,\n              textContent\n            );\n          }\n        }\n      } else if (isElementNode(element)) {\n        const tagName = element.tagName.toLowerCase();\n        const attributes = collectEssentialAttributes(element);\n        const openingTag = `<${tagName}${attributes ? " " + attributes : ""}>`;\n        const closingTag = `</${tagName}>`;\n        const textContent = element.textContent?.trim() || "";\n        elementOutput += `${index + indexOffset}:${openingTag}${textContent}${closingTag}\n`;\n        if (debug) {\n          console.debug(\n            `[Debug] Outputting element at index ${index + indexOffset}: <${tagName}> + text: "${textContent}"`\n          );\n        }\n      }\n      outputString += elementOutput;\n      selectorMap[index + indexOffset] = xpaths;\n    });\n    console.timeEnd("processElements:processCandidates");\n    if (debug) {\n      window.drawChunk(selectorMap, true);\n    }\n    console.timeEnd("processElements:total");\n    return {\n      outputString,\n      selectorMap\n    };\n  }\n  function collectEssentialAttributes(element) {\n    const essentialAttributes = [\n      "id",\n      "class",\n      "href",\n      "src",\n      "aria-label",\n      "aria-name",\n      "aria-role",\n      "aria-description",\n      "aria-expanded",\n      "aria-haspopup",\n      "type",\n      "value"\n    ];\n    const attrs = essentialAttributes.map((attr) => {\n      const value = element.getAttribute(attr);\n      return value ? `${attr}="${value}"` : "";\n    }).filter((attr) => attr !== "");\n    Array.from(element.attributes).forEach((attr) => {\n      if (attr.name.startsWith("data-")) {\n        attrs.push(`${attr.name}="${attr.value}"`);\n      }\n    });\n    return attrs.join(" ");\n  }\n  function storeDOM() {\n    const originalDOM = document.body.cloneNode(true);\n    console.log("DOM state stored.");\n    return originalDOM.outerHTML;\n  }\n  function restoreDOM(storedDOM) {\n    console.log("Restoring DOM");\n    if (storedDOM) {\n      document.body.innerHTML = storedDOM;\n    } else {\n      console.error("No DOM state was provided.");\n    }\n  }\n  function createTextBoundingBoxes() {\n    const style = document.createElement("style");\n    document.head.appendChild(style);\n    if (style.sheet) {\n      style.sheet.insertRule(\n        `\n      .stagehand-highlighted-word, .stagehand-space {\n        border: 0px solid orange;\n        display: inline-block !important;\n        visibility: visible;\n      }\n    `,\n        0\n      );\n      style.sheet.insertRule(\n        `\n        code .stagehand-highlighted-word, code .stagehand-space,\n        pre .stagehand-highlighted-word, pre .stagehand-space {\n          white-space: pre-wrap;\n          display: inline !important;\n      }\n     `,\n        1\n      );\n    }\n    function applyHighlighting(root) {\n      root.querySelectorAll("body *").forEach((element) => {\n        if (element.closest(".stagehand-nav, .stagehand-marker")) {\n          return;\n        }\n        if (["SCRIPT", "STYLE", "IFRAME", "INPUT", "TEXTAREA"].includes(\n          element.tagName\n        )) {\n          return;\n        }\n        const childNodes = Array.from(element.childNodes);\n        childNodes.forEach((node) => {\n          if (node.nodeType === 3 && node.textContent?.trim().length > 0) {\n            const textContent = node.textContent.replace(/\\u00A0/g, " ");\n            const tokens = textContent.split(/(\\s+)/g);\n            const fragment = document.createDocumentFragment();\n            const parentIsCode = element.tagName === "CODE";\n            tokens.forEach((token) => {\n              const span = document.createElement("span");\n              span.textContent = token;\n              if (parentIsCode) {\n                span.style.whiteSpace = "pre-wrap";\n                span.style.display = "inline";\n              }\n              span.className = token.trim().length === 0 ? "stagehand-space" : "stagehand-highlighted-word";\n              fragment.appendChild(span);\n            });\n            if (fragment.childNodes.length > 0 && node.parentNode) {\n              element.insertBefore(fragment, node);\n              node.remove();\n            }\n          }\n        });\n      });\n    }\n    applyHighlighting(document);\n    document.querySelectorAll("iframe").forEach((iframe) => {\n      try {\n        iframe.contentWindow?.postMessage({ action: "highlight" }, "*");\n      } catch (error) {\n        console.error("Error accessing iframe content: ", error);\n      }\n    });\n  }\n  function getElementBoundingBoxes(xpath) {\n    const element = window.findElementWithIframeSupport(xpath);\n    if (!element) return [];\n    const isValidText = (text) => text && text.trim().length > 0;\n    let dropDownElem = element.querySelector("option[selected]");\n    if (!dropDownElem) {\n      dropDownElem = element.querySelector("option");\n    }\n    if (dropDownElem) {\n      const elemText = dropDownElem.textContent || "";\n      if (isValidText(elemText)) {\n        const parentRect = element.getBoundingClientRect();\n        return [\n          {\n            text: elemText.trim(),\n            top: parentRect.top + window.scrollY,\n            left: parentRect.left + window.scrollX,\n            width: parentRect.width,\n            height: parentRect.height\n          }\n        ];\n      } else {\n        return [];\n      }\n    }\n    let placeholderText = "";\n    if ((element.tagName.toLowerCase() === "input" || element.tagName.toLowerCase() === "textarea") && element.placeholder) {\n      placeholderText = element.placeholder;\n    } else if (element.tagName.toLowerCase() === "a") {\n      placeholderText = "";\n    } else if (element.tagName.toLowerCase() === "img") {\n      placeholderText = element.alt || "";\n    }\n    const words = element.querySelectorAll(\n      ".stagehand-highlighted-word"\n    );\n    const boundingBoxes = Array.from(words).map((word) => {\n      const rect = word.getBoundingClientRect();\n      return {\n        text: word.innerText || "",\n        top: rect.top + window.scrollY,\n        left: rect.left + window.scrollX,\n        width: rect.width,\n        height: rect.height * 0.75\n      };\n    }).filter(\n      (box) => box.width > 0 && box.height > 0 && box.top >= 0 && box.left >= 0 && isValidText(box.text)\n    );\n    if (boundingBoxes.length === 0) {\n      const elementRect = element.getBoundingClientRect();\n      return [\n        {\n          text: placeholderText,\n          top: elementRect.top + window.scrollY,\n          left: elementRect.left + window.scrollX,\n          width: elementRect.width,\n          height: elementRect.height * 0.75\n        }\n      ];\n    }\n    return boundingBoxes;\n  }\n  window.processDom = processDom;\n  window.processAllOfDom = processAllOfDom;\n  window.processElements = processElements;\n  window.scrollToHeight = scrollToHeight;\n  window.storeDOM = storeDOM;\n  window.restoreDOM = restoreDOM;\n  window.createTextBoundingBoxes = createTextBoundingBoxes;\n  window.getElementBoundingBoxes = getElementBoundingBoxes;\n  var leafElementDenyList = ["SVG", "IFRAME", "SCRIPT", "STYLE", "LINK"];\n  var interactiveElementTypes = [\n    "A",\n    "BUTTON",\n    "DETAILS",\n    "EMBED",\n    "INPUT",\n    "LABEL",\n    "MENU",\n    "MENUITEM",\n    "OBJECT",\n    "SELECT",\n    "TEXTAREA",\n    "SUMMARY"\n  ];\n  var interactiveRoles = [\n    "button",\n    "menu",\n    "menuitem",\n    "link",\n    "checkbox",\n    "radio",\n    "slider",\n    "tab",\n    "tabpanel",\n    "textbox",\n    "combobox",\n    "grid",\n    "listbox",\n    "option",\n    "progressbar",\n    "scrollbar",\n    "searchbox",\n    "switch",\n    "tree",\n    "treeitem",\n    "spinbutton",\n    "tooltip"\n  ];\n  var interactiveAriaRoles = ["menu", "menuitem", "button"];\n  function getGlobalRect(element) {\n    const rect = element.getBoundingClientRect();\n    let doc = element.ownerDocument;\n    let win = doc.defaultView;\n    let offsetX = rect.left;\n    let offsetY = rect.top;\n    while (win && win !== window.top) {\n      const frameElem = win.frameElement;\n      if (!frameElem) {\n        break;\n      }\n      const frameRect = frameElem.getBoundingClientRect();\n      offsetX += frameRect.left;\n      offsetY += frameRect.top;\n      doc = frameElem.ownerDocument;\n      win = doc.defaultView;\n    }\n    return {\n      x: offsetX,\n      y: offsetY,\n      width: rect.width,\n      height: rect.height,\n      left: offsetX,\n      top: offsetY,\n      right: offsetX + rect.width,\n      bottom: offsetY + rect.height,\n      toJSON() {\n        return { x: this.x, y: this.y, width: this.width, height: this.height };\n      }\n    };\n  }\n  function isIFrameOnTop(element) {\n    const doc = element.ownerDocument;\n    const frameElem = doc.defaultView?.frameElement;\n    if (!frameElem) {\n      return true;\n    }\n    const parentDoc = frameElem.ownerDocument;\n    const iframeRect = frameElem.getBoundingClientRect();\n    if (!isTopElement(frameElem, iframeRect, parentDoc)) {\n      return false;\n    }\n    return isIFrameOnTop(frameElem);\n  }\n  function isVisible(element) {\n    const doc = element.ownerDocument;\n    if (!doc) return { visible: false, reason: "No ownerDocument found" };\n    const rect = element.getBoundingClientRect();\n    if (rect.width === 0 || rect.height === 0) {\n      return {\n        visible: false,\n        reason: "Element has zero width or height"\n      };\n    }\n    const globalRect = getGlobalRect(element);\n    const winTop = window.top;\n    if (!winTop) {\n      return {\n        visible: false,\n        reason: "No top-level window found"\n      };\n    }\n    const topWinWidth = winTop.innerWidth;\n    const topWinHeight = winTop.innerHeight;\n    if (globalRect.top > topWinHeight || globalRect.bottom < 0 || globalRect.left > topWinWidth || globalRect.right < 0) {\n      return {\n        visible: false,\n        reason: "Element is outside of the visible viewport in the top window"\n      };\n    }\n    if (!isTopElement(element, rect, doc)) {\n      return {\n        visible: false,\n        reason: "Element is not the topmost at its position (it may be overlapped)"\n      };\n    }\n    if (!isIFrameOnTop(element)) {\n      return {\n        visible: false,\n        reason: "Its parent iframe is not topmost in its parent document"\n      };\n    }\n    const browserVisible = element.checkVisibility({\n      checkOpacity: true,\n      checkVisibilityCSS: true\n    });\n    return browserVisible ? { visible: true, reason: "Element is visible" } : { visible: false, reason: "CSS rules make the element invisible" };\n  }\n  function isTextVisible(node) {\n    const doc = node.ownerDocument;\n    if (!doc) {\n      return {\n        visible: false,\n        reason: "No ownerDocument found for text node"\n      };\n    }\n    const range = doc.createRange();\n    range.selectNodeContents(node);\n    const rect = range.getBoundingClientRect();\n    if (rect.width === 0 || rect.height === 0) {\n      return {\n        visible: false,\n        reason: "Text node has zero bounding box (empty or no visible space)"\n      };\n    }\n    const dummyElement = node.parentElement;\n    if (!dummyElement) {\n      return {\n        visible: false,\n        reason: "No parent element found for text node"\n      };\n    }\n    const globalRect = getGlobalRect(dummyElement);\n    const winTop = window.top;\n    if (!winTop) {\n      return {\n        visible: false,\n        reason: "No top-level window found"\n      };\n    }\n    const topWinWidth = winTop.innerWidth;\n    const topWinHeight = winTop.innerHeight;\n    if (globalRect.top > topWinHeight || globalRect.bottom < 0 || globalRect.left > topWinWidth || globalRect.right < 0) {\n      return {\n        visible: false,\n        reason: "Text node is outside of the visible viewport in the top window"\n      };\n    }\n    if (!isTopElement(dummyElement, rect, doc)) {\n      return {\n        visible: false,\n        reason: "Text node is overlapped by another element"\n      };\n    }\n    if (!isIFrameOnTop(dummyElement)) {\n      return {\n        visible: false,\n        reason: "Its parent iframe is not topmost in its parent document"\n      };\n    }\n    const browserVisible = dummyElement.checkVisibility({\n      checkOpacity: true,\n      checkVisibilityCSS: true\n    });\n    return browserVisible ? { visible: true, reason: "Text is visible" } : { visible: false, reason: "CSS rules make the text node invisible" };\n  }\n  function isTopElement(elem, rect, doc) {\n    const points = [\n      // Corners\n      { x: rect.left, y: rect.top },\n      // Top left\n      { x: rect.right, y: rect.top },\n      // Top right\n      { x: rect.left, y: rect.bottom },\n      // Bottom left\n      { x: rect.right, y: rect.bottom },\n      // Bottom right\n      // Edge midpoints\n      { x: rect.left + rect.width / 2, y: rect.top },\n      // Top middle\n      { x: rect.left + rect.width / 2, y: rect.bottom },\n      // Bottom middle\n      { x: rect.left, y: rect.top + rect.height / 2 },\n      // Left middle\n      { x: rect.right, y: rect.top + rect.height / 2 },\n      // Right middle\n      // Interior points at 25% intervals\n      { x: rect.left + rect.width * 0.25, y: rect.top + rect.height * 0.25 },\n      { x: rect.left + rect.width * 0.5, y: rect.top + rect.height * 0.25 },\n      { x: rect.left + rect.width * 0.75, y: rect.top + rect.height * 0.25 },\n      { x: rect.left + rect.width * 0.25, y: rect.top + rect.height * 0.5 },\n      { x: rect.left + rect.width * 0.5, y: rect.top + rect.height * 0.5 },\n      // Center\n      { x: rect.left + rect.width * 0.75, y: rect.top + rect.height * 0.5 },\n      { x: rect.left + rect.width * 0.25, y: rect.top + rect.height * 0.75 },\n      { x: rect.left + rect.width * 0.5, y: rect.top + rect.height * 0.75 },\n      { x: rect.left + rect.width * 0.75, y: rect.top + rect.height * 0.75 },\n      // Additional interior points at 33% intervals\n      { x: rect.left + rect.width * 0.33, y: rect.top + rect.height * 0.33 },\n      { x: rect.left + rect.width * 0.66, y: rect.top + rect.height * 0.33 },\n      { x: rect.left + rect.width * 0.33, y: rect.top + rect.height * 0.66 },\n      { x: rect.left + rect.width * 0.66, y: rect.top + rect.height * 0.66 }\n    ];\n    const results = points.map((point) => {\n      const elAtPoint = doc.elementFromPoint(point.x, point.y);\n      let current = elAtPoint;\n      while (current && current !== doc.body) {\n        if (current.isSameNode(elem)) return true;\n        current = current.parentElement;\n      }\n      return false;\n    });\n    return results.some((result) => result);\n  }\n  var isActive = (element) => {\n    if (element.hasAttribute("disabled") || element.hasAttribute("hidden") || element.getAttribute("aria-disabled") === "true") {\n      return false;\n    }\n    return true;\n  };\n  var isInteractiveElement = (element) => {\n    const elementType = element.tagName;\n    const elementRole = element.getAttribute("role");\n    const elementAriaRole = element.getAttribute("aria-role");\n    return elementType && interactiveElementTypes.includes(elementType) || elementRole && interactiveRoles.includes(elementRole) || elementAriaRole && interactiveAriaRoles.includes(elementAriaRole);\n  };\n  var isLeafElement = (element) => {\n    if (element.textContent === "") {\n      return false;\n    }\n    if (element.childNodes.length === 0) {\n      return !leafElementDenyList.includes(element.tagName);\n    }\n    if (element.childNodes.length === 1 && isTextNode(element.childNodes[0])) {\n      return true;\n    }\n    return false;\n  };\n  async function pickChunk(chunksSeen) {\n    const viewportHeight = calculateViewportHeight();\n    const documentHeight = document.documentElement.scrollHeight;\n    const chunks = Math.ceil(documentHeight / viewportHeight);\n    const chunksArray = Array.from({ length: chunks }, (_, i) => i);\n    const chunksRemaining = chunksArray.filter((chunk2) => {\n      return !chunksSeen.includes(chunk2);\n    });\n    const currentScrollPosition = window.scrollY;\n    const closestChunk = chunksRemaining.reduce((closest, current) => {\n      const currentChunkTop = viewportHeight * current;\n      const closestChunkTop = viewportHeight * closest;\n      return Math.abs(currentScrollPosition - currentChunkTop) < Math.abs(currentScrollPosition - closestChunkTop) ? current : closest;\n    }, chunksRemaining[0]);\n    const chunk = closestChunk;\n    if (chunk === void 0) {\n      throw new Error(`No chunks remaining to check: ${chunksRemaining}`);\n    }\n    return {\n      chunk,\n      chunksArray\n    };\n  }\n\n  // lib/dom/debug.ts\n  async function debugDom(chunkNumber = 0) {\n    window.chunkNumber = chunkNumber;\n    const { selectorMap } = await window.processElements(window.chunkNumber);\n    drawChunk(selectorMap);\n  }\n  function findElementWithIframeSupport(xpath) {\n    const selectorArray = !Array.isArray(xpath) ? [xpath] : xpath;\n    let currentDoc = document;\n    let currentElement = null;\n    for (const [index, selector] of selectorArray.entries()) {\n      const result = document.evaluate(\n        selector,\n        currentDoc,\n        null,\n        XPathResult.FIRST_ORDERED_NODE_TYPE,\n        null\n      ).singleNodeValue;\n      if (!result) {\n        throw new Error("Element not found");\n      }\n      if (result instanceof HTMLIFrameElement) {\n        currentDoc = result.contentDocument;\n      } else if (index === selectorArray.length - 1) {\n        currentElement = result;\n      } else {\n        throw new Error("Element is not an iframe or last selector");\n      }\n    }\n    return currentElement;\n  }\n  function drawChunk(selectorMap, forceDraw = false) {\n    if (!window.showChunks && !forceDraw) return;\n    cleanupMarkers();\n    Object.values(selectorMap).forEach((selectorArr) => {\n      let element = null;\n      for (const selector of selectorArr) {\n        try {\n          element = findElementWithIframeSupport(selector);\n          if (!element) {\n            throw new Error("Element not found");\n          }\n          break;\n        } catch (e) {\n          console.error("Error finding element using selector", e, selectorArr);\n        }\n      }\n      if (element) {\n        let rect;\n        if (element.nodeType === Node.ELEMENT_NODE) {\n          rect = element.getBoundingClientRect();\n        } else {\n          const range = document.createRange();\n          range.selectNodeContents(element);\n          rect = range.getBoundingClientRect();\n        }\n        let totalOffsetX = window.scrollX;\n        let totalOffsetY = window.scrollY;\n        let currentWindow = element.ownerDocument.defaultView;\n        while (currentWindow !== window.top) {\n          const frameElement = currentWindow.frameElement;\n          if (frameElement) {\n            const frameRect = frameElement.getBoundingClientRect();\n            totalOffsetX += frameRect.left;\n            totalOffsetY += frameRect.top;\n          }\n          currentWindow = currentWindow.parent;\n        }\n        const color = "grey";\n        const overlay = document.createElement("div");\n        overlay.style.position = "absolute";\n        overlay.style.left = `${rect.left + totalOffsetX}px`;\n        overlay.style.top = `${rect.top + totalOffsetY}px`;\n        overlay.style.padding = "2px";\n        overlay.style.width = `${rect.width}px`;\n        overlay.style.height = `${rect.height}px`;\n        overlay.style.backgroundColor = color;\n        overlay.className = "stagehand-marker";\n        overlay.style.opacity = "0.3";\n        overlay.style.zIndex = "10000000000000";\n        overlay.style.border = "1px solid";\n        overlay.style.pointerEvents = "none";\n        document.body.appendChild(overlay);\n      } else {\n        console.error("Could not find a valid selector for element");\n      }\n    });\n  }\n  async function cleanupDebug() {\n    cleanupMarkers();\n  }\n  function cleanupMarkers() {\n    const markers = document.querySelectorAll(".stagehand-marker");\n    markers.forEach((marker) => {\n      marker.remove();\n    });\n  }\n  window.debugDom = debugDom;\n  window.cleanupDebug = cleanupDebug;\n  window.drawChunk = drawChunk;\n  window.findElementWithIframeSupport = findElementWithIframeSupport;\n})();\n';
+var scriptContent = '(() => {\n  // lib/dom/xpathUtils.ts\n  function findIframeElementForDocument(doc) {\n    const iframes = document.querySelectorAll("iframe");\n    for (const iframe of Array.from(iframes)) {\n      try {\n        if (iframe.contentDocument === doc || iframe.contentWindow?.document === doc) {\n          return iframe;\n        }\n      } catch {\n        continue;\n      }\n    }\n    return null;\n  }\n  function buildXPathForIframeElement(iframeEl) {\n    const parts = [];\n    let el = iframeEl;\n    while (el && el !== document.body) {\n      const siblings = el.parentElement ? Array.from(el.parentElement.children) : [];\n      let index = 1;\n      for (const sibling of siblings) {\n        if (sibling.tagName === el.tagName) {\n          if (sibling === el) {\n            break;\n          }\n          index++;\n        }\n      }\n      const tagName = el.tagName.toLowerCase();\n      parts.unshift(index > 1 ? `${tagName}[${index}]` : tagName);\n      el = el.parentElement;\n    }\n    return "//" + parts.join("/");\n  }\n  function generateIframeAwareXPathChain(element) {\n    if (!element.ownerDocument) return null;\n    if (element.ownerDocument === document) {\n      return null;\n    }\n    const iframeEl = findIframeElementForDocument(element.ownerDocument);\n    if (!iframeEl) {\n      return null;\n    }\n    const iframeXPath = buildXPathForIframeElement(iframeEl);\n    const insideIframeXPath = buildStandardXPathInsideDoc(element);\n    return [iframeXPath, insideIframeXPath];\n  }\n  function buildStandardXPathInsideDoc(node) {\n    const parts = [];\n    let current = node;\n    while (current && (isElementNode(current) || isTextNode(current))) {\n      const parent = current.parentElement;\n      if (!parent) break;\n      let index = 1;\n      const siblings = Array.from(parent.childNodes).filter(\n        (sibling) => sibling.nodeType === current.nodeType && sibling.nodeName === current.nodeName\n      );\n      for (const sibling of siblings) {\n        if (sibling === current) break;\n        index++;\n      }\n      if (current.nodeName !== "#text") {\n        const tagName = current.nodeName.toLowerCase();\n        parts.unshift(siblings.length > 1 ? `${tagName}[${index}]` : tagName);\n      }\n      current = parent;\n    }\n    return "//" + parts.join("/");\n  }\n  function getParentElement(node) {\n    return isElementNode(node) ? node.parentElement : node.parentNode;\n  }\n  function getCombinations(attributes, size) {\n    const results = [];\n    function helper(start, combo) {\n      if (combo.length === size) {\n        results.push([...combo]);\n        return;\n      }\n      for (let i = start; i < attributes.length; i++) {\n        combo.push(attributes[i]);\n        helper(i + 1, combo);\n        combo.pop();\n      }\n    }\n    helper(0, []);\n    return results;\n  }\n  function isXPathFirstResultElement(xpath, target) {\n    try {\n      const result = document.evaluate(\n        xpath,\n        document.documentElement,\n        null,\n        XPathResult.ORDERED_NODE_SNAPSHOT_TYPE,\n        null\n      );\n      return result.snapshotItem(0) === target;\n    } catch (error) {\n      console.warn(`Invalid XPath expression: ${xpath}`, error);\n      return false;\n    }\n  }\n  function escapeXPathString(value) {\n    if (value.includes("\'")) {\n      if (value.includes(\'"\')) {\n        return "concat(" + value.split(/(\'+)/).map((part) => {\n          if (part === "\'") {\n            return `"\'"`;\n          } else if (part.startsWith("\'") && part.endsWith("\'")) {\n            return `"${part}"`;\n          } else {\n            return `\'${part}\'`;\n          }\n        }).join(",") + ")";\n      } else {\n        return `"${value}"`;\n      }\n    } else {\n      return `\'${value}\'`;\n    }\n  }\n  async function generateXPathsForElement(element) {\n    if (!element) return [];\n    const iframeChain = generateIframeAwareXPathChain(element);\n    const [complexXPath, standardXPath, idBasedXPath] = await Promise.all([\n      generateComplexXPath(element),\n      generateStandardXPath(element),\n      generatedIdBasedXPath(element)\n    ]);\n    if (iframeChain) {\n      return [\n        iframeChain,\n        standardXPath,\n        ...idBasedXPath ? [idBasedXPath] : [],\n        complexXPath\n      ];\n    }\n    return [standardXPath, ...idBasedXPath ? [idBasedXPath] : [], complexXPath];\n  }\n  async function generateComplexXPath(element) {\n    const parts = [];\n    let currentElement = element;\n    while (currentElement && (isTextNode(currentElement) || isElementNode(currentElement))) {\n      if (isElementNode(currentElement)) {\n        const el = currentElement;\n        let selector = el.tagName.toLowerCase();\n        const attributePriority = [\n          "data-qa",\n          "data-component",\n          "data-role",\n          "role",\n          "aria-role",\n          "type",\n          "name",\n          "aria-label",\n          "placeholder",\n          "title",\n          "alt"\n        ];\n        const attributes = attributePriority.map((attr) => {\n          let value = el.getAttribute(attr);\n          if (attr === "href-full" && value) {\n            value = el.getAttribute("href");\n          }\n          return value ? { attr: attr === "href-full" ? "href" : attr, value } : null;\n        }).filter((attr) => attr !== null);\n        let uniqueSelector = "";\n        for (let i = 1; i <= attributes.length; i++) {\n          const combinations = getCombinations(attributes, i);\n          for (const combo of combinations) {\n            const conditions = combo.map((a) => `@${a.attr}=${escapeXPathString(a.value)}`).join(" and ");\n            const xpath2 = `//${selector}[${conditions}]`;\n            if (isXPathFirstResultElement(xpath2, el)) {\n              uniqueSelector = xpath2;\n              break;\n            }\n          }\n          if (uniqueSelector) break;\n        }\n        if (uniqueSelector) {\n          parts.unshift(uniqueSelector.replace("//", ""));\n          break;\n        } else {\n          const parent = getParentElement(el);\n          if (parent) {\n            const siblings = Array.from(parent.children).filter(\n              (sibling) => sibling.tagName === el.tagName\n            );\n            const index = siblings.indexOf(el) + 1;\n            selector += siblings.length > 1 ? `[${index}]` : "";\n          }\n          parts.unshift(selector);\n        }\n      }\n      currentElement = getParentElement(currentElement);\n    }\n    const xpath = "//" + parts.join("/");\n    return xpath;\n  }\n  async function generateStandardXPath(element) {\n    const parts = [];\n    while (element && (isTextNode(element) || isElementNode(element))) {\n      let index = 0;\n      let hasSameTypeSiblings = false;\n      const siblings = element.parentElement ? Array.from(element.parentElement.childNodes) : [];\n      for (let i = 0; i < siblings.length; i++) {\n        const sibling = siblings[i];\n        if (sibling.nodeType === element.nodeType && sibling.nodeName === element.nodeName) {\n          index = index + 1;\n          hasSameTypeSiblings = true;\n          if (sibling.isSameNode(element)) {\n            break;\n          }\n        }\n      }\n      if (element.nodeName !== "#text") {\n        const tagName = element.nodeName.toLowerCase();\n        const pathIndex = hasSameTypeSiblings ? `[${index}]` : "";\n        parts.unshift(`${tagName}${pathIndex}`);\n      }\n      element = element.parentElement;\n    }\n    return parts.length ? `/${parts.join("/")}` : "";\n  }\n  async function generatedIdBasedXPath(element) {\n    if (isElementNode(element) && element.id) {\n      return `//*[@id=\'${element.id}\']`;\n    }\n    return null;\n  }\n\n  // lib/dom/utils.ts\n  async function waitForDomSettle() {\n    return new Promise((resolve) => {\n      const createTimeout = () => {\n        return setTimeout(() => {\n          resolve();\n        }, 2e3);\n      };\n      let timeout = createTimeout();\n      const observer = new MutationObserver(() => {\n        clearTimeout(timeout);\n        timeout = createTimeout();\n      });\n      observer.observe(window.document.body, { childList: true, subtree: true });\n    });\n  }\n  window.waitForDomSettle = waitForDomSettle;\n  function calculateViewportHeight() {\n    return Math.ceil(window.innerHeight * 0.75);\n  }\n  function canElementScroll(elem) {\n    if (typeof elem.scrollTo !== "function") {\n      console.warn("canElementScroll: .scrollTo is not a function.");\n      return false;\n    }\n    try {\n      const originalTop = elem.scrollTop;\n      elem.scrollTo({\n        top: originalTop + 100,\n        left: 0,\n        behavior: "instant"\n      });\n      if (elem.scrollTop === originalTop) {\n        throw new Error("scrollTop did not change");\n      }\n      elem.scrollTo({\n        top: originalTop,\n        left: 0,\n        behavior: "instant"\n      });\n      return true;\n    } catch (error) {\n      console.warn("canElementScroll error:", error.message || error);\n      return false;\n    }\n  }\n\n  // lib/dom/GlobalPageContainer.ts\n  var GlobalPageContainer = class {\n    getViewportHeight() {\n      return calculateViewportHeight();\n    }\n    getScrollHeight() {\n      return document.documentElement.scrollHeight;\n    }\n    async scrollTo(offset) {\n      await new Promise((resolve) => setTimeout(resolve, 1500));\n      window.scrollTo({ top: offset, left: 0, behavior: "smooth" });\n      await this.waitForScrollEnd();\n    }\n    async waitForScrollEnd() {\n      return new Promise((resolve) => {\n        let scrollEndTimer;\n        const handleScroll = () => {\n          clearTimeout(scrollEndTimer);\n          scrollEndTimer = window.setTimeout(() => {\n            window.removeEventListener("scroll", handleScroll);\n            resolve();\n          }, 100);\n        };\n        window.addEventListener("scroll", handleScroll, { passive: true });\n        handleScroll();\n      });\n    }\n  };\n\n  // lib/dom/ElementContainer.ts\n  var ElementContainer = class {\n    constructor(el) {\n      this.el = el;\n    }\n    getViewportHeight() {\n      return this.el.clientHeight;\n    }\n    getScrollHeight() {\n      return this.el.scrollHeight;\n    }\n    async scrollTo(offset) {\n      await new Promise((resolve) => setTimeout(resolve, 1500));\n      this.el.scrollTo({ top: offset, left: 0, behavior: "smooth" });\n      await this.waitForScrollEnd();\n    }\n    async waitForScrollEnd() {\n      return new Promise((resolve) => {\n        let scrollEndTimer;\n        const handleScroll = () => {\n          clearTimeout(scrollEndTimer);\n          scrollEndTimer = window.setTimeout(() => {\n            this.el.removeEventListener("scroll", handleScroll);\n            resolve();\n          }, 100);\n        };\n        this.el.addEventListener("scroll", handleScroll, { passive: true });\n        handleScroll();\n      });\n    }\n  };\n\n  // lib/dom/containerFactory.ts\n  function createStagehandContainer(obj) {\n    if (obj instanceof Window) {\n      return new GlobalPageContainer();\n    } else {\n      return new ElementContainer(obj);\n    }\n  }\n\n  // lib/dom/process.ts\n  function isElementNode(node) {\n    return node.nodeType === Node.ELEMENT_NODE;\n  }\n  function isTextNode(node) {\n    return node.nodeType === Node.TEXT_NODE && Boolean(node.textContent?.trim());\n  }\n  function getScrollableElements(topN) {\n    const docEl = document.documentElement;\n    const scrollableElements = [docEl];\n    const allElements = document.querySelectorAll("*");\n    for (const elem of allElements) {\n      const style = window.getComputedStyle(elem);\n      const overflowY = style.overflowY;\n      const isPotentiallyScrollable = overflowY === "auto" || overflowY === "scroll" || overflowY === "overlay";\n      if (isPotentiallyScrollable) {\n        const candidateScrollDiff = elem.scrollHeight - elem.clientHeight;\n        if (candidateScrollDiff > 0 && canElementScroll(elem)) {\n          scrollableElements.push(elem);\n        }\n      }\n    }\n    scrollableElements.sort((a, b) => b.scrollHeight - a.scrollHeight);\n    if (topN !== void 0) {\n      return scrollableElements.slice(0, topN);\n    }\n    return scrollableElements;\n  }\n  async function getScrollableElementXpaths(topN) {\n    const scrollableElems = getScrollableElements(topN);\n    const xpaths = [];\n    for (const elem of scrollableElems) {\n      const allXPaths = await generateXPathsForElement(elem);\n      const firstXPath = allXPaths?.[0] || "";\n      xpaths.push(firstXPath);\n    }\n    return xpaths;\n  }\n  async function processDom(chunksSeen) {\n    const { chunk, chunksArray } = await pickChunk(chunksSeen);\n    const container = createStagehandContainer(window);\n    const { outputString, selectorMap } = await processElements(\n      chunk,\n      true,\n      0,\n      container\n    );\n    console.log(\n      `Stagehand (Browser Process): Extracted dom elements:\n${outputString}`\n    );\n    return {\n      outputString,\n      selectorMap,\n      chunk,\n      chunks: chunksArray\n    };\n  }\n  async function processAllOfDom() {\n    console.log("Stagehand (Browser Process): Processing all of DOM");\n    const mainScrollableElements = getScrollableElements(1);\n    const mainScrollable = mainScrollableElements[0];\n    const container = mainScrollable === document.documentElement ? createStagehandContainer(window) : createStagehandContainer(mainScrollable);\n    const viewportHeight = container.getViewportHeight();\n    const documentHeight = container.getScrollHeight();\n    const totalChunks = Math.ceil(documentHeight / viewportHeight);\n    let index = 0;\n    const results = [];\n    for (let chunk = 0; chunk < totalChunks; chunk++) {\n      const result = await processElements(chunk, true, index, container);\n      results.push(result);\n      index += Object.keys(result.selectorMap).length;\n    }\n    await container.scrollTo(0);\n    const allOutputString = results.map((result) => result.outputString).join("");\n    const allSelectorMap = results.reduce(\n      (acc, result) => ({ ...acc, ...result.selectorMap }),\n      {}\n    );\n    console.log(\n      `Stagehand (Browser Process): All dom elements: ${allOutputString}`\n    );\n    return {\n      outputString: allOutputString,\n      selectorMap: allSelectorMap\n    };\n  }\n  async function scrollToHeight(height) {\n    window.scrollTo({ top: height, left: 0, behavior: "smooth" });\n    await new Promise((resolve) => {\n      let scrollEndTimer;\n      const handleScrollEnd = () => {\n        clearTimeout(scrollEndTimer);\n        scrollEndTimer = window.setTimeout(() => {\n          window.removeEventListener("scroll", handleScrollEnd);\n          resolve();\n        }, 100);\n      };\n      window.addEventListener("scroll", handleScrollEnd, { passive: true });\n      handleScrollEnd();\n    });\n  }\n  var xpathCache = /* @__PURE__ */ new Map();\n  function getIFrameDocument(iframe) {\n    try {\n      if (iframe.contentDocument) {\n        return iframe.contentDocument;\n      }\n      if (iframe.contentWindow?.document) {\n        return iframe.contentWindow.document;\n      }\n    } catch (error) {\n      console.warn(\n        "Could not access iframe document (likely cross-origin).",\n        error\n      );\n    }\n    return null;\n  }\n  async function processElements(chunk, scrollToChunk = true, indexOffset = 0, container, debug = false) {\n    console.time("processElements:total");\n    const stagehandContainer = container ?? createStagehandContainer(window);\n    const viewportHeight = stagehandContainer.getViewportHeight();\n    const totalScrollHeight = stagehandContainer.getScrollHeight();\n    const chunkHeight = viewportHeight * chunk;\n    const maxScrollTop = totalScrollHeight - viewportHeight;\n    const offsetTop = Math.min(chunkHeight, maxScrollTop);\n    if (scrollToChunk) {\n      console.time("processElements:scroll");\n      await stagehandContainer.scrollTo(offsetTop);\n      console.timeEnd("processElements:scroll");\n    }\n    console.log("Stagehand (Browser Process): Generating candidate elements");\n    console.time("processElements:findCandidates");\n    const DOMQueue = [...document.body.childNodes];\n    const candidateElements = [];\n    while (DOMQueue.length > 0) {\n      const element = DOMQueue.pop();\n      if (!element) continue;\n      let shouldAddElement = false;\n      let skipReason = "";\n      if (isElementNode(element)) {\n        const tagName = element.tagName.toLowerCase();\n        if (debug) {\n          console.debug(`[Debug] Checking element: <${tagName}>`, element);\n        }\n        if (tagName === "iframe") {\n          const iframeDoc = getIFrameDocument(element);\n          if (iframeDoc && iframeDoc.body) {\n            if (debug) {\n              console.debug(\n                "[Debug] [IFrame] Found same-origin iframe document:",\n                iframeDoc\n              );\n            }\n            DOMQueue.push(...Array.from(iframeDoc.body.childNodes));\n          } else {\n            console.warn(`Skipping cross-origin iframe: ${element}`);\n          }\n        }\n        const childrenCount = element.childNodes.length;\n        for (let i = childrenCount - 1; i >= 0; i--) {\n          const child = element.childNodes[i];\n          DOMQueue.push(child);\n        }\n        const interactive = isInteractiveElement(element);\n        const active = isActive(element);\n        const visibility = isVisible(element);\n        const isLeaf = isLeafElement(element);\n        if (debug) {\n          console.debug(\n            `[Debug] <${tagName}>: interactive=${interactive}, active=${active}, visible=${visibility.visible}, leaf=${isLeaf}, visibilityReason=${visibility.reason}`\n          );\n        }\n        if (interactive) {\n          if (!active) {\n            skipReason = "Interactive element is not active";\n          } else if (!visibility.visible) {\n            skipReason = `Interactive element is not visible: ${visibility.reason}`;\n          } else {\n            shouldAddElement = true;\n          }\n        } else if (isLeaf) {\n          if (!active) {\n            skipReason = "Leaf element is not active";\n          } else if (!visibility.visible) {\n            skipReason = `Leaf element is not visible: ${visibility.reason}`;\n          } else {\n            shouldAddElement = true;\n          }\n        } else {\n          skipReason = "Element is neither interactive nor leaf";\n        }\n      } else if (isTextNode(element)) {\n        const visibility = isTextVisible(element);\n        if (debug) {\n          const textPreview = element.textContent?.trim().substring(0, 50) + (element.textContent?.length > 50 ? "..." : "");\n          console.debug(\n            `[Debug] Checking TEXT NODE: "${textPreview}" visible=${visibility.visible}, visibilityReason=${visibility.reason}`,\n            element\n          );\n        }\n        if (!visibility.visible) {\n          skipReason = `Text node is not visible: ${visibility.reason}`;\n        } else {\n          shouldAddElement = true;\n        }\n      } else {\n        skipReason = "Node is neither an element nor a text node";\n      }\n      if (shouldAddElement) {\n        if (debug) {\n          if (isElementNode(element)) {\n            console.info(\n              `[Debug] \\u2705 Element accepted: <${element.tagName.toLowerCase()}>`,\n              element\n            );\n          } else if (isTextNode(element)) {\n            const textPreview = element.textContent?.trim().substring(0, 50) + (element.textContent?.length > 50 ? "..." : "");\n            console.info(\n              `[Debug] \\u2705 Text node accepted: "${textPreview}"`,\n              element\n            );\n          }\n        }\n        candidateElements.push(element);\n      } else if (debug) {\n        if (isElementNode(element)) {\n          console.info(\n            `[Debug] \\u274C Element skipped: <${element.tagName.toLowerCase()}> - Reason: ${skipReason}`,\n            element\n          );\n        } else if (isTextNode(element)) {\n          const textPreview = element.textContent?.trim().substring(0, 50) + (element.textContent?.length > 50 ? "..." : "");\n          console.info(\n            `[Debug] \\u274C Text node skipped: "${textPreview}" - Reason: ${skipReason}`,\n            element\n          );\n        } else {\n          console.info(\n            `[Debug] \\u274C Node skipped - Reason: ${skipReason}`,\n            element\n          );\n        }\n      }\n    }\n    console.timeEnd("processElements:findCandidates");\n    console.log(\n      `Stagehand (Browser Process): Processing candidate elements: ${candidateElements.length}`\n    );\n    const selectorMap = {};\n    let outputString = "";\n    console.time("processElements:processCandidates");\n    console.time("processElements:generateXPaths");\n    const xpathLists = await Promise.all(\n      candidateElements.map(async (element) => {\n        if (xpathCache.has(element)) {\n          return xpathCache.get(element);\n        }\n        const xpaths = await generateXPathsForElement(element);\n        xpathCache.set(element, xpaths);\n        return xpaths;\n      })\n    );\n    console.timeEnd("processElements:generateXPaths");\n    candidateElements.forEach((element, index) => {\n      const xpaths = xpathLists[index] || [];\n      let elementOutput = "";\n      if (isTextNode(element)) {\n        const textContent = element.textContent?.trim();\n        if (textContent) {\n          elementOutput += `${index + indexOffset}:${textContent}\n`;\n          if (debug) {\n            console.debug(\n              `[Debug] Outputting text node at index ${index + indexOffset}:`,\n              textContent\n            );\n          }\n        }\n      } else if (isElementNode(element)) {\n        const tagName = element.tagName.toLowerCase();\n        const attributes = collectEssentialAttributes(element);\n        const openingTag = `<${tagName}${attributes ? " " + attributes : ""}>`;\n        const closingTag = `</${tagName}>`;\n        const textContent = element.textContent?.trim() || "";\n        elementOutput += `${index + indexOffset}:${openingTag}${textContent}${closingTag}\n`;\n        if (debug) {\n          console.debug(\n            `[Debug] Outputting element at index ${index + indexOffset}: <${tagName}> + text: "${textContent}"`\n          );\n        }\n      }\n      outputString += elementOutput;\n      selectorMap[index + indexOffset] = xpaths;\n    });\n    console.timeEnd("processElements:processCandidates");\n    if (debug) {\n      window.drawChunk(selectorMap, true);\n    }\n    console.timeEnd("processElements:total");\n    return {\n      outputString,\n      selectorMap\n    };\n  }\n  function collectEssentialAttributes(element) {\n    const essentialAttributes = [\n      "id",\n      "class",\n      "href",\n      "src",\n      "aria-label",\n      "aria-name",\n      "aria-role",\n      "aria-description",\n      "aria-expanded",\n      "aria-haspopup",\n      "type",\n      "value"\n    ];\n    const attrs = essentialAttributes.map((attr) => {\n      const value = element.getAttribute(attr);\n      return value ? `${attr}="${value}"` : "";\n    }).filter((attr) => attr !== "");\n    Array.from(element.attributes).forEach((attr) => {\n      if (attr.name.startsWith("data-")) {\n        attrs.push(`${attr.name}="${attr.value}"`);\n      }\n    });\n    return attrs.join(" ");\n  }\n  function storeDOM() {\n    const originalDOM = document.body.cloneNode(true);\n    console.log("DOM state stored.");\n    return originalDOM.outerHTML;\n  }\n  function restoreDOM(storedDOM) {\n    console.log("Restoring DOM");\n    if (storedDOM) {\n      document.body.innerHTML = storedDOM;\n    } else {\n      console.error("No DOM state was provided.");\n    }\n  }\n  function createTextBoundingBoxes() {\n    const style = document.createElement("style");\n    document.head.appendChild(style);\n    if (style.sheet) {\n      style.sheet.insertRule(\n        `\n      .stagehand-highlighted-word, .stagehand-space {\n        border: 0px solid orange;\n        display: inline-block !important;\n        visibility: visible;\n      }\n    `,\n        0\n      );\n      style.sheet.insertRule(\n        `\n        code .stagehand-highlighted-word, code .stagehand-space,\n        pre .stagehand-highlighted-word, pre .stagehand-space {\n          white-space: pre-wrap;\n          display: inline !important;\n      }\n     `,\n        1\n      );\n    }\n    function applyHighlighting(root) {\n      root.querySelectorAll("body *").forEach((element) => {\n        if (element.closest(".stagehand-nav, .stagehand-marker")) {\n          return;\n        }\n        if (["SCRIPT", "STYLE", "IFRAME", "INPUT"].includes(element.tagName)) {\n          return;\n        }\n        const childNodes = Array.from(element.childNodes);\n        childNodes.forEach((node) => {\n          if (node.nodeType === 3 && node.textContent?.trim().length > 0) {\n            const textContent = node.textContent.replace(/\\u00A0/g, " ");\n            const tokens = textContent.split(/(\\s+)/g);\n            const fragment = document.createDocumentFragment();\n            const parentIsCode = element.tagName === "CODE";\n            tokens.forEach((token) => {\n              const span = document.createElement("span");\n              span.textContent = token;\n              if (parentIsCode) {\n                span.style.whiteSpace = "pre-wrap";\n                span.style.display = "inline";\n              }\n              span.className = token.trim().length === 0 ? "stagehand-space" : "stagehand-highlighted-word";\n              fragment.appendChild(span);\n            });\n            if (fragment.childNodes.length > 0 && node.parentNode) {\n              element.insertBefore(fragment, node);\n              node.remove();\n            }\n          }\n        });\n      });\n    }\n    applyHighlighting(document);\n    document.querySelectorAll("iframe").forEach((iframe) => {\n      try {\n        iframe.contentWindow?.postMessage({ action: "highlight" }, "*");\n      } catch (error) {\n        console.error("Error accessing iframe content: ", error);\n      }\n    });\n  }\n  function getElementBoundingBoxes(xpath) {\n    const element = window.findElementWithIframeSupport(xpath);\n    if (!element) return [];\n    const isValidText = (text) => text && text.trim().length > 0;\n    let dropDownElem = element.querySelector("option[selected]");\n    if (!dropDownElem) {\n      dropDownElem = element.querySelector("option");\n    }\n    if (dropDownElem) {\n      const elemText = dropDownElem.textContent || "";\n      if (isValidText(elemText)) {\n        const parentRect = element.getBoundingClientRect();\n        return [\n          {\n            text: elemText.trim(),\n            top: parentRect.top + window.scrollY,\n            left: parentRect.left + window.scrollX,\n            width: parentRect.width,\n            height: parentRect.height\n          }\n        ];\n      } else {\n        return [];\n      }\n    }\n    let placeholderText = "";\n    if ((element.tagName.toLowerCase() === "input" || element.tagName.toLowerCase() === "textarea") && element.placeholder) {\n      placeholderText = element.placeholder;\n    } else if (element.tagName.toLowerCase() === "a") {\n      placeholderText = "";\n    } else if (element.tagName.toLowerCase() === "img") {\n      placeholderText = element.alt || "";\n    }\n    const words = element.querySelectorAll(\n      ".stagehand-highlighted-word"\n    );\n    const boundingBoxes = Array.from(words).map((word) => {\n      const rect = word.getBoundingClientRect();\n      return {\n        text: word.innerText || "",\n        top: rect.top + window.scrollY,\n        left: rect.left + window.scrollX,\n        width: rect.width,\n        height: rect.height * 0.75\n      };\n    }).filter(\n      (box) => box.width > 0 && box.height > 0 && box.top >= 0 && box.left >= 0 && isValidText(box.text)\n    );\n    if (boundingBoxes.length === 0) {\n      const elementRect = element.getBoundingClientRect();\n      return [\n        {\n          text: placeholderText,\n          top: elementRect.top + window.scrollY,\n          left: elementRect.left + window.scrollX,\n          width: elementRect.width,\n          height: elementRect.height * 0.75\n        }\n      ];\n    }\n    return boundingBoxes;\n  }\n  window.processDom = processDom;\n  window.processAllOfDom = processAllOfDom;\n  window.processElements = processElements;\n  window.storeDOM = storeDOM;\n  window.restoreDOM = restoreDOM;\n  window.createTextBoundingBoxes = createTextBoundingBoxes;\n  window.getElementBoundingBoxes = getElementBoundingBoxes;\n  window.createStagehandContainer = createStagehandContainer;\n  window.getScrollableElementXpaths = getScrollableElementXpaths;\n  var leafElementDenyList = ["SVG", "IFRAME", "SCRIPT", "STYLE", "LINK"];\n  var interactiveElementTypes = [\n    "A",\n    "BUTTON",\n    "DETAILS",\n    "EMBED",\n    "INPUT",\n    "LABEL",\n    "MENU",\n    "MENUITEM",\n    "OBJECT",\n    "SELECT",\n    "TEXTAREA",\n    "SUMMARY"\n  ];\n  var interactiveRoles = [\n    "button",\n    "menu",\n    "menuitem",\n    "link",\n    "checkbox",\n    "radio",\n    "slider",\n    "tab",\n    "tabpanel",\n    "textbox",\n    "combobox",\n    "grid",\n    "listbox",\n    "option",\n    "progressbar",\n    "scrollbar",\n    "searchbox",\n    "switch",\n    "tree",\n    "treeitem",\n    "spinbutton",\n    "tooltip"\n  ];\n  var interactiveAriaRoles = ["menu", "menuitem", "button"];\n  function getGlobalRect(element) {\n    const rect = element.getBoundingClientRect();\n    let doc = element.ownerDocument;\n    let win = doc.defaultView;\n    let offsetX = rect.left;\n    let offsetY = rect.top;\n    while (win && win !== window.top) {\n      const frameElem = win.frameElement;\n      if (!frameElem) {\n        break;\n      }\n      const frameRect = frameElem.getBoundingClientRect();\n      offsetX += frameRect.left;\n      offsetY += frameRect.top;\n      doc = frameElem.ownerDocument;\n      win = doc.defaultView;\n    }\n    return {\n      x: offsetX,\n      y: offsetY,\n      width: rect.width,\n      height: rect.height,\n      left: offsetX,\n      top: offsetY,\n      right: offsetX + rect.width,\n      bottom: offsetY + rect.height,\n      toJSON() {\n        return { x: this.x, y: this.y, width: this.width, height: this.height };\n      }\n    };\n  }\n  function isIFrameOnTop(element) {\n    const doc = element.ownerDocument;\n    const frameElem = doc.defaultView?.frameElement;\n    if (!frameElem) {\n      return true;\n    }\n    const parentDoc = frameElem.ownerDocument;\n    const iframeRect = frameElem.getBoundingClientRect();\n    if (!isTopElement(frameElem, iframeRect, parentDoc)) {\n      return false;\n    }\n    return isIFrameOnTop(frameElem);\n  }\n  function isVisible(element) {\n    const doc = element.ownerDocument;\n    if (!doc) return { visible: false, reason: "No ownerDocument found" };\n    const rect = element.getBoundingClientRect();\n    if (rect.width === 0 || rect.height === 0) {\n      return {\n        visible: false,\n        reason: "Element has zero width or height"\n      };\n    }\n    const globalRect = getGlobalRect(element);\n    const winTop = window.top;\n    if (!winTop) {\n      return {\n        visible: false,\n        reason: "No top-level window found"\n      };\n    }\n    const topWinWidth = winTop.innerWidth;\n    const topWinHeight = winTop.innerHeight;\n    if (globalRect.top > topWinHeight || globalRect.bottom < 0 || globalRect.left > topWinWidth || globalRect.right < 0) {\n      return {\n        visible: false,\n        reason: "Element is outside of the visible viewport in the top window"\n      };\n    }\n    if (!isTopElement(element, rect, doc)) {\n      return {\n        visible: false,\n        reason: "Element is not the topmost at its position (it may be overlapped)"\n      };\n    }\n    if (!isIFrameOnTop(element)) {\n      return {\n        visible: false,\n        reason: "Its parent iframe is not topmost in its parent document"\n      };\n    }\n    const browserVisible = element.checkVisibility({\n      checkOpacity: true,\n      checkVisibilityCSS: true\n    });\n    return browserVisible ? { visible: true, reason: "Element is visible" } : { visible: false, reason: "CSS rules make the element invisible" };\n  }\n  function isTextVisible(node) {\n    const doc = node.ownerDocument;\n    if (!doc) {\n      return {\n        visible: false,\n        reason: "No ownerDocument found for text node"\n      };\n    }\n    const range = doc.createRange();\n    range.selectNodeContents(node);\n    const rect = range.getBoundingClientRect();\n    if (rect.width === 0 || rect.height === 0) {\n      return {\n        visible: false,\n        reason: "Text node has zero bounding box (empty or no visible space)"\n      };\n    }\n    const dummyElement = node.parentElement;\n    if (!dummyElement) {\n      return {\n        visible: false,\n        reason: "No parent element found for text node"\n      };\n    }\n    const globalRect = getGlobalRect(dummyElement);\n    const winTop = window.top;\n    if (!winTop) {\n      return {\n        visible: false,\n        reason: "No top-level window found"\n      };\n    }\n    const topWinWidth = winTop.innerWidth;\n    const topWinHeight = winTop.innerHeight;\n    if (globalRect.top > topWinHeight || globalRect.bottom < 0 || globalRect.left > topWinWidth || globalRect.right < 0) {\n      return {\n        visible: false,\n        reason: "Text node is outside of the visible viewport in the top window"\n      };\n    }\n    const parent = node.parentElement;\n    if (!parent) {\n      return {\n        visible: false,\n        reason: "No parent element found for text node"\n      };\n    }\n    if (!isTopElement(dummyElement, rect, doc)) {\n      return {\n        visible: false,\n        reason: "Text node is overlapped by another element"\n      };\n    }\n    if (!isIFrameOnTop(dummyElement)) {\n      return {\n        visible: false,\n        reason: "Its parent iframe is not topmost in its parent document"\n      };\n    }\n    const browserVisible = dummyElement.checkVisibility({\n      checkOpacity: true,\n      checkVisibilityCSS: true\n    });\n    return browserVisible ? { visible: true, reason: "Text is visible" } : { visible: false, reason: "CSS rules make the text node invisible" };\n  }\n  function isTopElement(elem, rect, doc) {\n    const points = [\n      // Corners\n      { x: rect.left, y: rect.top },\n      // Top left\n      { x: rect.right, y: rect.top },\n      // Top right\n      { x: rect.left, y: rect.bottom },\n      // Bottom left\n      { x: rect.right, y: rect.bottom },\n      // Bottom right\n      // Edge midpoints\n      { x: rect.left + rect.width / 2, y: rect.top },\n      // Top middle\n      { x: rect.left + rect.width / 2, y: rect.bottom },\n      // Bottom middle\n      { x: rect.left, y: rect.top + rect.height / 2 },\n      // Left middle\n      { x: rect.right, y: rect.top + rect.height / 2 },\n      // Right middle\n      // Interior points at 25% intervals\n      { x: rect.left + rect.width * 0.25, y: rect.top + rect.height * 0.25 },\n      { x: rect.left + rect.width * 0.5, y: rect.top + rect.height * 0.25 },\n      { x: rect.left + rect.width * 0.75, y: rect.top + rect.height * 0.25 },\n      { x: rect.left + rect.width * 0.25, y: rect.top + rect.height * 0.5 },\n      { x: rect.left + rect.width * 0.5, y: rect.top + rect.height * 0.5 },\n      // Center\n      { x: rect.left + rect.width * 0.75, y: rect.top + rect.height * 0.5 },\n      { x: rect.left + rect.width * 0.25, y: rect.top + rect.height * 0.75 },\n      { x: rect.left + rect.width * 0.5, y: rect.top + rect.height * 0.75 },\n      { x: rect.left + rect.width * 0.75, y: rect.top + rect.height * 0.75 },\n      // Additional interior points at 33% intervals\n      { x: rect.left + rect.width * 0.33, y: rect.top + rect.height * 0.33 },\n      { x: rect.left + rect.width * 0.66, y: rect.top + rect.height * 0.33 },\n      { x: rect.left + rect.width * 0.33, y: rect.top + rect.height * 0.66 },\n      { x: rect.left + rect.width * 0.66, y: rect.top + rect.height * 0.66 }\n    ];\n    const results = points.map((point) => {\n      const elAtPoint = doc.elementFromPoint(point.x, point.y);\n      let current = elAtPoint;\n      while (current && current !== doc.body) {\n        if (current.isSameNode(elem)) return true;\n        current = current.parentElement;\n      }\n      return false;\n    });\n    return results.some((result) => result);\n  }\n  var isActive = (element) => {\n    if (element.hasAttribute("disabled") || element.hasAttribute("hidden") || element.getAttribute("aria-disabled") === "true") {\n      return false;\n    }\n    return true;\n  };\n  var isInteractiveElement = (element) => {\n    const elementType = element.tagName;\n    const elementRole = element.getAttribute("role");\n    const elementAriaRole = element.getAttribute("aria-role");\n    return elementType && interactiveElementTypes.includes(elementType) || elementRole && interactiveRoles.includes(elementRole) || elementAriaRole && interactiveAriaRoles.includes(elementAriaRole);\n  };\n  var isLeafElement = (element) => {\n    if (element.textContent === "") {\n      return false;\n    }\n    if (element.childNodes.length === 0) {\n      return !leafElementDenyList.includes(element.tagName);\n    }\n    if (element.childNodes.length === 1 && isTextNode(element.childNodes[0])) {\n      return true;\n    }\n    return false;\n  };\n  async function pickChunk(chunksSeen) {\n    const viewportHeight = calculateViewportHeight();\n    const documentHeight = document.documentElement.scrollHeight;\n    const chunks = Math.ceil(documentHeight / viewportHeight);\n    const chunksArray = Array.from({ length: chunks }, (_, i) => i);\n    const chunksRemaining = chunksArray.filter((chunk2) => {\n      return !chunksSeen.includes(chunk2);\n    });\n    const currentScrollPosition = window.scrollY;\n    const closestChunk = chunksRemaining.reduce((closest, current) => {\n      const currentChunkTop = viewportHeight * current;\n      const closestChunkTop = viewportHeight * closest;\n      return Math.abs(currentScrollPosition - currentChunkTop) < Math.abs(currentScrollPosition - closestChunkTop) ? current : closest;\n    }, chunksRemaining[0]);\n    const chunk = closestChunk;\n    if (chunk === void 0) {\n      throw new Error(`No chunks remaining to check: ${chunksRemaining}`);\n    }\n    return {\n      chunk,\n      chunksArray\n    };\n  }\n\n  // lib/dom/debug.ts\n  async function debugDom(chunkNumber = 0) {\n    window.chunkNumber = chunkNumber;\n    const { selectorMap } = await window.processElements(window.chunkNumber);\n    drawChunk(selectorMap);\n  }\n  function findElementWithIframeSupport(xpath) {\n    const selectorArray = !Array.isArray(xpath) ? [xpath] : xpath;\n    let currentDoc = document;\n    let currentElement = null;\n    for (const [index, selector] of selectorArray.entries()) {\n      const result = document.evaluate(\n        selector,\n        currentDoc,\n        null,\n        XPathResult.FIRST_ORDERED_NODE_TYPE,\n        null\n      ).singleNodeValue;\n      if (!result) {\n        throw new Error("Element not found");\n      }\n      if (result instanceof HTMLIFrameElement) {\n        currentDoc = result.contentDocument;\n      } else if (index === selectorArray.length - 1) {\n        currentElement = result;\n      } else {\n        throw new Error("Element is not an iframe or last selector");\n      }\n    }\n    return currentElement;\n  }\n  function drawChunk(selectorMap, forceDraw = false) {\n    if (!window.showChunks && !forceDraw) return;\n    cleanupMarkers();\n    Object.values(selectorMap).forEach((selectorArr) => {\n      let element = null;\n      for (const selector of selectorArr) {\n        try {\n          element = findElementWithIframeSupport(selector);\n          if (!element) {\n            throw new Error("Element not found");\n          }\n          break;\n        } catch (e) {\n          console.error("Error finding element using selector", e, selectorArr);\n        }\n      }\n      if (element) {\n        let rect;\n        if (element.nodeType === Node.ELEMENT_NODE) {\n          rect = element.getBoundingClientRect();\n        } else {\n          const range = document.createRange();\n          range.selectNodeContents(element);\n          rect = range.getBoundingClientRect();\n        }\n        let totalOffsetX = window.scrollX;\n        let totalOffsetY = window.scrollY;\n        let currentWindow = element.ownerDocument.defaultView;\n        while (currentWindow !== window.top) {\n          const frameElement = currentWindow.frameElement;\n          if (frameElement) {\n            const frameRect = frameElement.getBoundingClientRect();\n            totalOffsetX += frameRect.left;\n            totalOffsetY += frameRect.top;\n          }\n          currentWindow = currentWindow.parent;\n        }\n        const color = "grey";\n        const overlay = document.createElement("div");\n        overlay.style.position = "absolute";\n        overlay.style.left = `${rect.left + totalOffsetX}px`;\n        overlay.style.top = `${rect.top + totalOffsetY}px`;\n        overlay.style.padding = "2px";\n        overlay.style.width = `${rect.width}px`;\n        overlay.style.height = `${rect.height}px`;\n        overlay.style.backgroundColor = color;\n        overlay.className = "stagehand-marker";\n        overlay.style.opacity = "0.3";\n        overlay.style.zIndex = "10000000000000";\n        overlay.style.border = "1px solid";\n        overlay.style.pointerEvents = "none";\n        document.body.appendChild(overlay);\n      } else {\n        console.error("Could not find a valid selector for element");\n      }\n    });\n  }\n  async function cleanupDebug() {\n    cleanupMarkers();\n  }\n  function cleanupMarkers() {\n    const markers = document.querySelectorAll(".stagehand-marker");\n    markers.forEach((marker) => {\n      marker.remove();\n    });\n  }\n  window.debugDom = debugDom;\n  window.cleanupDebug = cleanupDebug;\n  window.drawChunk = drawChunk;\n  window.findElementWithIframeSupport = findElementWithIframeSupport;\n})();\n';
 
 // lib/cache/BaseCache.ts
 var fs = __toESM(require("fs"));
@@ -660,40 +663,42 @@ var import_sdk = __toESM(require("@anthropic-ai/sdk"));
 var import_zod_to_json_schema = require("zod-to-json-schema");
 
 // lib/llm/LLMClient.ts
-var modelsWithVision = [
-  "gpt-4o",
-  "gpt-4o-mini",
-  "claude-3-5-sonnet-latest",
-  "claude-3-5-sonnet-20240620",
-  "claude-3-5-sonnet-20241022",
-  "gpt-4o-2024-08-06"
-];
 var AnnotatedScreenshotText = "This is a screenshot of the current page state with the elements annotated on it. Each element id is annotated with a number to the top left of it. Duplicate annotations at the same location are under each other vertically.";
 var LLMClient = class {
-  constructor(modelName) {
+  constructor(modelName, userProvidedInstructions) {
     this.modelName = modelName;
-    this.hasVision = modelsWithVision.includes(modelName);
+    this.userProvidedInstructions = userProvidedInstructions;
   }
 };
 
 // lib/llm/AnthropicClient.ts
 var AnthropicClient = class extends LLMClient {
-  constructor(logger, enableCaching = false, cache, modelName, clientOptions) {
+  constructor({
+    enableCaching = false,
+    cache,
+    modelName,
+    clientOptions,
+    userProvidedInstructions
+  }) {
     super(modelName);
     this.type = "anthropic";
     this.client = new import_sdk.default(clientOptions);
-    this.logger = logger;
     this.cache = cache;
     this.enableCaching = enableCaching;
     this.modelName = modelName;
     this.clientOptions = clientOptions;
+    this.userProvidedInstructions = userProvidedInstructions;
   }
-  createChatCompletion(options) {
-    return __async(this, null, function* () {
-      var _a, _b, _c;
+  createChatCompletion(_0) {
+    return __async(this, arguments, function* ({
+      options,
+      retries,
+      logger
+    }) {
+      var _a, _b;
       const optionsWithoutImage = __spreadValues({}, options);
       delete optionsWithoutImage.image;
-      this.logger({
+      logger({
         category: "anthropic",
         message: "creating chat completion",
         level: 1,
@@ -711,7 +716,7 @@ var AnthropicClient = class extends LLMClient {
         image: options.image,
         response_model: options.response_model,
         tools: options.tools,
-        retries: options.retries
+        retries
       };
       if (this.enableCaching) {
         const cachedResponse = yield this.cache.get(
@@ -719,7 +724,7 @@ var AnthropicClient = class extends LLMClient {
           options.requestId
         );
         if (cachedResponse) {
-          this.logger({
+          logger({
             category: "llm_cache",
             message: "LLM cache hit - returning cached response",
             level: 1,
@@ -740,7 +745,7 @@ var AnthropicClient = class extends LLMClient {
           });
           return cachedResponse;
         } else {
-          this.logger({
+          logger({
             category: "llm_cache",
             message: "LLM cache miss - no cached response found",
             level: 1,
@@ -821,17 +826,15 @@ var AnthropicClient = class extends LLMClient {
         formattedMessages.push(screenshotMessage);
       }
       let anthropicTools = (_a = options.tools) == null ? void 0 : _a.map((tool) => {
-        if (tool.type === "function") {
-          return {
-            name: tool.function.name,
-            description: tool.function.description,
-            input_schema: {
-              type: "object",
-              properties: tool.function.parameters.properties,
-              required: tool.function.parameters.required
-            }
-          };
-        }
+        return {
+          name: tool.name,
+          description: tool.description,
+          input_schema: {
+            type: "object",
+            properties: tool.parameters.properties,
+            required: tool.parameters.required
+          }
+        };
       });
       let toolDefinition;
       if (options.response_model) {
@@ -859,7 +862,7 @@ var AnthropicClient = class extends LLMClient {
         system: systemMessage ? systemMessage.content : void 0,
         temperature: options.temperature
       });
-      this.logger({
+      logger({
         category: "anthropic",
         message: "response",
         level: 1,
@@ -903,7 +906,7 @@ var AnthropicClient = class extends LLMClient {
           total_tokens: response.usage.input_tokens + response.usage.output_tokens
         }
       };
-      this.logger({
+      logger({
         category: "anthropic",
         message: "transformed response",
         level: 1,
@@ -927,12 +930,14 @@ var AnthropicClient = class extends LLMClient {
           }
           return result;
         } else {
-          if (!options.retries || options.retries < 5) {
-            return this.createChatCompletion(__spreadProps(__spreadValues({}, options), {
-              retries: ((_c = options.retries) != null ? _c : 0) + 1
-            }));
+          if (!retries || retries < 5) {
+            return this.createChatCompletion({
+              options,
+              logger,
+              retries: (retries != null ? retries : 0) + 1
+            });
           }
-          this.logger({
+          logger({
             category: "anthropic",
             message: "error creating chat completion",
             level: 1,
@@ -950,7 +955,7 @@ var AnthropicClient = class extends LLMClient {
       }
       if (this.enableCaching) {
         this.cache.set(cacheOptions, transformedResponse, options.requestId);
-        this.logger({
+        logger({
           category: "anthropic",
           message: "cached response",
           level: 1,
@@ -990,15 +995,15 @@ var import_zod_to_json_schema2 = __toESM(require("zod-to-json-schema"));
 
 // lib/utils.ts
 var import_crypto = __toESM(require("crypto"));
+var HEURISTIC_CHAR_WIDTH = 5;
 function generateId(operation) {
   return import_crypto.default.createHash("sha256").update(operation).digest("hex");
 }
 function formatText(textAnnotations, pageWidth) {
-  const charWidth = estimateCharacterWidth(textAnnotations) || 10;
   const sortedAnnotations = [...textAnnotations].sort(
     (a, b) => a.bottom_left.y - b.bottom_left.y
   );
-  const epsilon = 1e-4;
+  const epsilon = 1;
   const lineMap = /* @__PURE__ */ new Map();
   for (const annotation of sortedAnnotations) {
     let foundLineY;
@@ -1015,24 +1020,31 @@ function formatText(textAnnotations, pageWidth) {
     }
   }
   const lineYs = Array.from(lineMap.keys()).sort((a, b) => a - b);
-  let maxNormalizedEndX = 0;
   const finalLines = [];
   for (const lineY of lineYs) {
     const lineAnnotations = lineMap.get(lineY);
     lineAnnotations.sort((a, b) => a.bottom_left.x - b.bottom_left.x);
     const groupedLineAnnotations = groupWordsInSentence(lineAnnotations);
-    for (const ann of groupedLineAnnotations) {
-      const textLengthInPx = ann.text.length * charWidth;
-      const normalizedTextLength = textLengthInPx / pageWidth;
-      const endX = ann.bottom_left_normalized.x + normalizedTextLength;
-      if (endX > maxNormalizedEndX) {
-        maxNormalizedEndX = endX;
-      }
-    }
     finalLines.push(groupedLineAnnotations);
   }
-  let canvasWidth = Math.ceil(maxNormalizedEndX * (pageWidth / charWidth)) + 20;
-  canvasWidth = Math.max(canvasWidth, 1);
+  let maxLineWidthInChars = 0;
+  for (const line of finalLines) {
+    let lineMaxEnd = 0;
+    for (const ann of line) {
+      const startXInChars = Math.round(
+        ann.bottom_left_normalized.x * (pageWidth / HEURISTIC_CHAR_WIDTH)
+      );
+      const endXInChars = startXInChars + ann.text.length;
+      if (endXInChars > lineMaxEnd) {
+        lineMaxEnd = endXInChars;
+      }
+    }
+    if (lineMaxEnd > maxLineWidthInChars) {
+      maxLineWidthInChars = lineMaxEnd;
+    }
+  }
+  maxLineWidthInChars += 20;
+  const canvasWidth = Math.max(maxLineWidthInChars, 1);
   const lineBaselines = finalLines.map(
     (line) => Math.min(...line.map((a) => a.bottom_left.y))
   );
@@ -1050,10 +1062,8 @@ function formatText(textAnnotations, pageWidth) {
     } else {
       const gap = lineBaselines[i] - lineBaselines[i - 1];
       let extraLines = 0;
-      if (normalLineSpacing > 0) {
-        if (gap > 1.2 * normalLineSpacing) {
-          extraLines = Math.max(Math.round(gap / normalLineSpacing) - 1, 0);
-        }
+      if (normalLineSpacing > 0 && gap > 1.2 * normalLineSpacing) {
+        extraLines = Math.max(Math.round(gap / normalLineSpacing) - 1, 0);
       }
       for (let e = 0; e < extraLines; e++) {
         lineIndex++;
@@ -1066,7 +1076,7 @@ function formatText(textAnnotations, pageWidth) {
     for (const annotation of lineAnnotations) {
       const text = annotation.text;
       const startXInChars = Math.round(
-        annotation.bottom_left_normalized.x * canvasWidth
+        annotation.bottom_left_normalized.x * (pageWidth / HEURISTIC_CHAR_WIDTH)
       );
       for (let j = 0; j < text.length; j++) {
         const xPos = startXInChars + j;
@@ -1090,16 +1100,6 @@ function ensureLineExists(canvas, lineIndex, width) {
     canvas.push(new Array(width).fill(" "));
   }
 }
-function estimateCharacterWidth(textAnnotations) {
-  const charWidths = [];
-  for (const annotation of textAnnotations) {
-    const length = annotation.text.length;
-    if (length > 0) {
-      charWidths.push(annotation.width / length);
-    }
-  }
-  return median(charWidths);
-}
 function groupWordsInSentence(lineAnnotations) {
   const groupedAnnotations = [];
   let currentGroup = [];
@@ -1108,7 +1108,7 @@ function groupWordsInSentence(lineAnnotations) {
       currentGroup.push(annotation);
       continue;
     }
-    const padding = 2;
+    const padding = 1;
     const lastAnn = currentGroup[currentGroup.length - 1];
     const characterWidth = lastAnn.width / lastAnn.text.length * padding;
     const isWithinHorizontalRange = annotation.bottom_left.x <= lastAnn.bottom_left.x + lastAnn.width + characterWidth;
@@ -1117,8 +1117,10 @@ function groupWordsInSentence(lineAnnotations) {
     } else {
       if (currentGroup.length > 0) {
         const groupedAnnotation = createGroupedAnnotation(currentGroup);
-        groupedAnnotations.push(groupedAnnotation);
-        currentGroup = [annotation];
+        if (groupedAnnotation.text.length > 0) {
+          groupedAnnotations.push(groupedAnnotation);
+          currentGroup = [annotation];
+        }
       }
     }
   }
@@ -1215,22 +1217,30 @@ function safeLocatorWithIframeSupport(page, selector) {
 
 // lib/llm/OpenAIClient.ts
 var OpenAIClient = class extends LLMClient {
-  constructor(logger, enableCaching = false, cache, modelName, clientOptions) {
+  constructor({
+    enableCaching = false,
+    cache,
+    modelName,
+    clientOptions
+  }) {
     super(modelName);
     this.type = "openai";
     this.clientOptions = clientOptions;
     this.client = new import_openai.default(clientOptions);
-    this.logger = logger;
     this.cache = cache;
     this.enableCaching = enableCaching;
     this.modelName = modelName;
   }
-  createChatCompletion(optionsInitial, retries = 3) {
-    return __async(this, null, function* () {
+  createChatCompletion(_0) {
+    return __async(this, arguments, function* ({
+      options: optionsInitial,
+      logger,
+      retries = 3
+    }) {
       var _a, _b, _e;
       let options = optionsInitial;
       let isToolsOverridedForO1 = false;
-      if (this.modelName === "o1-mini" || this.modelName === "o1-preview") {
+      if (this.modelName.startsWith("o1") || this.modelName.startsWith("o3")) {
         let {
           tool_choice,
           top_p,
@@ -1279,11 +1289,11 @@ ${JSON.stringify(
           });
         }
       }
-      if (options.temperature && (this.modelName === "o1-mini" || this.modelName === "o1-preview")) {
+      if (options.temperature && (this.modelName.startsWith("o1") || this.modelName.startsWith("o3"))) {
         throw new Error("Temperature is not supported for o1 models");
       }
       const _c = options, { image, requestId } = _c, optionsWithoutImageAndRequestId = __objRest(_c, ["image", "requestId"]);
-      this.logger({
+      logger({
         category: "openai",
         message: "creating chat completion",
         level: 1,
@@ -1316,7 +1326,7 @@ ${JSON.stringify(
           options.requestId
         );
         if (cachedResponse) {
-          this.logger({
+          logger({
             category: "llm_cache",
             message: "LLM cache hit - returning cached response",
             level: 1,
@@ -1333,7 +1343,7 @@ ${JSON.stringify(
           });
           return cachedResponse;
         } else {
-          this.logger({
+          logger({
             category: "llm_cache",
             message: "LLM cache miss - no cached response found",
             level: 1,
@@ -1363,7 +1373,7 @@ ${JSON.stringify(
       }
       let responseFormat = void 0;
       if (options.response_model) {
-        if (this.modelName === "o1-mini" || this.modelName === "o1-preview") {
+        if (this.modelName.startsWith("o1") || this.modelName.startsWith("o3")) {
           try {
             const parsedSchema = JSON.stringify(
               (0, import_zod_to_json_schema2.default)(options.response_model.schema)
@@ -1374,19 +1384,20 @@ ${JSON.stringify(
 ${parsedSchema}
 
 
-          Do not include any other text, formating or markdown in your output. Do not include \`\`\` or \`\`\`json in your response. Only the JSON object itself.`
+          Do not include any other text, formatting or markdown in your output. Do not include \`\`\` or \`\`\`json in your response. Only the JSON object itself.`
             });
           } catch (error) {
-            this.logger({
+            logger({
               category: "openai",
               message: "Failed to parse response model schema",
               level: 0
             });
             if (retries > 0) {
-              return this.createChatCompletion(
+              return this.createChatCompletion({
                 options,
-                retries - 1
-              );
+                logger,
+                retries: retries - 1
+              });
             }
             throw error;
           }
@@ -1400,7 +1411,7 @@ ${parsedSchema}
       const _d = __spreadProps(__spreadValues({}, optionsWithoutImageAndRequestId), {
         model: this.modelName
       }), { response_model } = _d, openAiOptions = __objRest(_d, ["response_model"]);
-      this.logger({
+      logger({
         category: "openai",
         message: "creating chat completion",
         level: 1,
@@ -1465,8 +1476,14 @@ ${parsedSchema}
         messages: formattedMessages,
         response_format: responseFormat,
         stream: false,
-        tools: (_e = options.tools) == null ? void 0 : _e.filter((tool) => "function" in tool)
-        // ensure only OpenAI tools are used
+        tools: (_e = options.tools) == null ? void 0 : _e.map((tool) => ({
+          function: {
+            name: tool.name,
+            description: tool.description,
+            parameters: tool.parameters
+          },
+          type: "function"
+        }))
       });
       const response = yield this.client.chat.completions.create(body);
       if (isToolsOverridedForO1) {
@@ -1484,7 +1501,7 @@ ${parsedSchema}
           ];
           response.choices[0].message.content = null;
         } catch (error) {
-          this.logger({
+          logger({
             category: "openai",
             message: "Failed to parse tool call response",
             level: 0,
@@ -1500,15 +1517,16 @@ ${parsedSchema}
             }
           });
           if (retries > 0) {
-            return this.createChatCompletion(
+            return this.createChatCompletion({
               options,
-              retries - 1
-            );
+              logger,
+              retries: retries - 1
+            });
           }
           throw error;
         }
       }
-      this.logger({
+      logger({
         category: "openai",
         message: "response",
         level: 1,
@@ -1528,10 +1546,11 @@ ${parsedSchema}
         const parsedData = JSON.parse(extractedData);
         if (!validateZodSchema(options.response_model.schema, parsedData)) {
           if (retries > 0) {
-            return this.createChatCompletion(
+            return this.createChatCompletion({
               options,
-              retries - 1
-            );
+              logger,
+              retries: retries - 1
+            });
           }
           throw new Error("Invalid response schema");
         }
@@ -1545,7 +1564,7 @@ ${parsedSchema}
         return parsedData;
       }
       if (this.enableCaching) {
-        this.logger({
+        logger({
           category: "llm_cache",
           message: "caching response",
           level: 1,
@@ -1580,6 +1599,7 @@ var LLMProvider = class {
       "gpt-4o-2024-08-06": "openai",
       "o1-mini": "openai",
       "o1-preview": "openai",
+      "o3-mini": "openai",
       "claude-3-5-sonnet-latest": "anthropic",
       "claude-3-5-sonnet-20240620": "anthropic",
       "claude-3-5-sonnet-20241022": "anthropic"
@@ -1612,21 +1632,21 @@ var LLMProvider = class {
     }
     switch (provider) {
       case "openai":
-        return new OpenAIClient(
-          this.logger,
-          this.enableCaching,
-          this.cache,
+        return new OpenAIClient({
+          logger: this.logger,
+          enableCaching: this.enableCaching,
+          cache: this.cache,
           modelName,
           clientOptions
-        );
+        });
       case "anthropic":
-        return new AnthropicClient(
-          this.logger,
-          this.enableCaching,
-          this.cache,
+        return new AnthropicClient({
+          logger: this.logger,
+          enableCaching: this.enableCaching,
+          cache: this.cache,
           modelName,
           clientOptions
-        );
+        });
       default:
         throw new Error(`Unsupported provider: ${provider}`);
     }
@@ -1763,6 +1783,9 @@ var ActionCache = class _ActionCache extends BaseCache {
   }
 };
 
+// lib/inference.ts
+var import_zod2 = require("zod");
+
 // lib/prompt.ts
 var actSystemPrompt = `
 # Instructions
@@ -1774,7 +1797,7 @@ You will receive:
 2. the steps that you've taken so far
 3. a list of active DOM elements in this chunk to consider to get closer to the goal. 
 4. Optionally, a list of variable names that the user has provided that you may use to accomplish the goal. To use the variables, you must use the special <|VARIABLE_NAME|> syntax.
-
+5. Optionally, custom instructions will be provided by the user. If the user's instructions are not relevant to the current task, ignore them. Otherwise, make sure to adhere to them.
 
 ## Your Goal / Specification
 You have 2 tools that you can call: doAction, and skipSection. Do action only performs Playwright actions. Do exactly what the user's goal is. Do not perform any other actions or exceed the scope of the goal.
@@ -1783,7 +1806,7 @@ If the user's goal will be accomplished after running the playwright action, set
 Note 1: If there is a popup on the page for cookies or advertising that has nothing to do with the goal, try to close it first before proceeding. As this can block the goal from being completed.
 Note 2: Sometimes what your are looking for is hidden behind and element you need to interact with. For example, sliders, buttons, etc...
 
-Again, if the user's goal will be accomplished after running the playwright action, set completed to true.
+Again, if the user's goal will be accomplished after running the playwright action, set completed to true. Also, if the user provides custom instructions, it is imperative that you follow them no matter what.
 `;
 var verifyActCompletionSystemPrompt = `
 You are a browser automation assistant. The job has given you a goal and a list of steps that have been taken so far. Your job is to determine if the user's goal has been completed based on the provided information.
@@ -1792,7 +1815,6 @@ You are a browser automation assistant. The job has given you a goal and a list 
 You will receive:
 1. The user's goal: A clear description of what the user wants to achieve.
 2. Steps taken so far: A list of actions that have been performed up to this point.
-3. An image of the current page
 
 # Your Task
 Analyze the provided information to determine if the user's goal has been fully completed.
@@ -1806,6 +1828,61 @@ Return a boolean value:
 - False positives are okay. False negatives are not okay.
 - Look for evidence of errors on the page or something having gone wrong in completing the goal. If one does not exist, return true.
 `;
+var actTools = [
+  {
+    type: "function",
+    name: "doAction",
+    description: "execute the next playwright step that directly accomplishes the goal",
+    parameters: {
+      type: "object",
+      required: ["method", "element", "args", "step", "completed"],
+      properties: {
+        method: {
+          type: "string",
+          description: "The playwright function to call."
+        },
+        element: {
+          type: "number",
+          description: "The element number to act on"
+        },
+        args: {
+          type: "array",
+          description: "The required arguments",
+          items: {
+            type: "string",
+            description: "The argument to pass to the function"
+          }
+        },
+        step: {
+          type: "string",
+          description: "human readable description of the step that is taken in the past tense. Please be very detailed."
+        },
+        why: {
+          type: "string",
+          description: "why is this step taken? how does it advance the goal?"
+        },
+        completed: {
+          type: "boolean",
+          description: "true if the goal should be accomplished after this step"
+        }
+      }
+    }
+  },
+  {
+    type: "function",
+    name: "skipSection",
+    description: "skips this area of the webpage because the current goal cannot be accomplished here",
+    parameters: {
+      type: "object",
+      properties: {
+        reason: {
+          type: "string",
+          description: "reason that no action is taken"
+        }
+      }
+    }
+  }
+];
 function buildVerifyActCompletionSystemPrompt() {
   return {
     role: "system",
@@ -1831,10 +1908,26 @@ ${domElements}
     content: actUserPrompt
   };
 }
-function buildActSystemPrompt() {
+function buildUserInstructionsString(userProvidedInstructions) {
+  if (!userProvidedInstructions) {
+    return "";
+  }
+  return `
+
+# Custom Instructions Provided by the User
+    
+Please keep the user's instructions in mind when performing actions. If the user's instructions are not relevant to the current task, ignore them.
+
+User Instructions:
+${userProvidedInstructions}`;
+}
+function buildActSystemPrompt(userProvidedInstructions) {
   return {
     role: "system",
-    content: actSystemPrompt
+    content: [
+      actSystemPrompt,
+      buildUserInstructionsString(userProvidedInstructions)
+    ].filter(Boolean).join("\n\n")
   };
 }
 function buildActUserPrompt(action, steps = "None", domElements, variables) {
@@ -1859,66 +1952,7 @@ ${Object.keys(variables).map((key) => `<|${key.toUpperCase()}|>`).join("\n")}
     content: actUserPrompt
   };
 }
-var actTools = [
-  {
-    type: "function",
-    function: {
-      name: "doAction",
-      description: "execute the next playwright step that directly accomplishes the goal",
-      parameters: {
-        type: "object",
-        required: ["method", "element", "args", "step", "completed"],
-        properties: {
-          step: {
-            type: "string",
-            description: "human readable description of the step that is taken in the past tense. Please be very detailed."
-          },
-          why: {
-            type: "string",
-            description: "why is this step taken? how does it advance the goal?"
-          },
-          method: {
-            type: "string",
-            description: "The playwright function to call."
-          },
-          element: {
-            type: "number",
-            description: "The element number to act on"
-          },
-          args: {
-            type: "array",
-            description: "The required arguments",
-            items: {
-              type: "string",
-              description: "The argument to pass to the function"
-            }
-          },
-          completed: {
-            type: "boolean",
-            description: "true if the goal should be accomplished after this step"
-          }
-        }
-      }
-    }
-  },
-  {
-    type: "function",
-    function: {
-      name: "skipSection",
-      description: "skips this area of the webpage because the current goal cannot be accomplished here",
-      parameters: {
-        type: "object",
-        properties: {
-          reason: {
-            type: "string",
-            description: "reason that no action is taken"
-          }
-        }
-      }
-    }
-  }
-];
-function buildExtractSystemPrompt(isUsingPrintExtractedDataTool = false, useTextExtract = true) {
+function buildExtractSystemPrompt(isUsingPrintExtractedDataTool = false, useTextExtract = true, userProvidedInstructions) {
   const baseContent = `You are extracting content on behalf of a user.
   If a user asks you to extract a 'list' of information, or 'all' information, 
   YOU MUST EXTRACT ALL OF THE INFORMATION THAT THE USER REQUESTS.
@@ -1938,12 +1972,17 @@ ONLY print the content using the print_extracted_data tool provided.
   const additionalInstructions = useTextExtract ? `Once you are given the text-rendered webpage, 
     you must thoroughly and meticulously analyze it. Be very careful to ensure that you
     do not miss any important information.` : "";
+  const userInstructions = buildUserInstructionsString(
+    userProvidedInstructions
+  );
   const content = `${baseContent}${contentDetail}
 
 ${instructions}
 ${toolInstructions}${additionalInstructions ? `
 
-${additionalInstructions}` : ""}`.replace(/\s+/g, " ");
+${additionalInstructions}` : ""}${userInstructions ? `
+
+${userInstructions}` : ""}`.replace(/\s+/g, " ");
   return {
     role: "system",
     content
@@ -2007,37 +2046,34 @@ chunksSeen: ${chunksSeen}
 chunksTotal: ${chunksTotal}`
   };
 }
-var observeSystemPrompt = `
+function buildObserveSystemPrompt(userProvidedInstructions, isUsingAccessibilityTree = false) {
+  const observeSystemPrompt = `
 You are helping the user automate the browser by finding elements based on what the user wants to observe in the page.
 You will be given:
 1. a instruction of elements to observe
-2. a numbered list of possible elements or an annotated image of the page
+2. ${isUsingAccessibilityTree ? "a hierarchical accessibility tree showing the semantic structure of the page. The tree is a hybrid of the DOM and the accessibility tree." : "a numbered list of possible elements"}
 
-Return an array of elements that match the instruction.
-`;
-function buildObserveSystemPrompt() {
+Return an array of elements that match the instruction if they exist, otherwise return an empty array.`;
   const content = observeSystemPrompt.replace(/\s+/g, " ");
   return {
     role: "system",
-    content
+    content: [content, buildUserInstructionsString(userProvidedInstructions)].filter(Boolean).join("\n\n")
   };
 }
-function buildObserveUserMessage(instruction, domElements) {
+function buildObserveUserMessage(instruction, domElements, isUsingAccessibilityTree = false) {
   return {
     role: "user",
     content: `instruction: ${instruction}
-DOM: ${domElements}`
+${isUsingAccessibilityTree ? "Accessibility Tree" : "DOM"}: ${domElements}`
   };
 }
 
 // lib/inference.ts
-var import_zod2 = require("zod");
 function verifyActCompletion(_0) {
   return __async(this, arguments, function* ({
     goal,
     steps,
     llmClient,
-    screenshot,
     domElements,
     logger,
     requestId
@@ -2046,23 +2082,22 @@ function verifyActCompletion(_0) {
       completed: import_zod2.z.boolean().describe("true if the goal is accomplished")
     });
     const response = yield llmClient.createChatCompletion({
-      messages: [
-        buildVerifyActCompletionSystemPrompt(),
-        buildVerifyActCompletionUserPrompt(goal, steps, domElements)
-      ],
-      temperature: 0.1,
-      top_p: 1,
-      frequency_penalty: 0,
-      presence_penalty: 0,
-      image: screenshot ? {
-        buffer: screenshot,
-        description: "This is a screenshot of the whole visible page."
-      } : void 0,
-      response_model: {
-        name: "Verification",
-        schema: verificationSchema
+      options: {
+        messages: [
+          buildVerifyActCompletionSystemPrompt(),
+          buildVerifyActCompletionUserPrompt(goal, steps, domElements)
+        ],
+        temperature: 0.1,
+        top_p: 1,
+        frequency_penalty: 0,
+        presence_penalty: 0,
+        response_model: {
+          name: "Verification",
+          schema: verificationSchema
+        },
+        requestId
       },
-      requestId
+      logger
     });
     if (!response || typeof response !== "object") {
       logger({
@@ -2095,26 +2130,28 @@ function act(_0) {
     domElements,
     steps,
     llmClient,
-    screenshot,
     retries = 0,
     logger,
     requestId,
-    variables
+    variables,
+    userProvidedInstructions
   }) {
     const messages = [
-      buildActSystemPrompt(),
+      buildActSystemPrompt(userProvidedInstructions),
       buildActUserPrompt(action, steps, domElements, variables)
     ];
     const response = yield llmClient.createChatCompletion({
-      messages,
-      temperature: 0.1,
-      top_p: 1,
-      frequency_penalty: 0,
-      presence_penalty: 0,
-      tool_choice: "auto",
-      tools: actTools,
-      image: screenshot ? { buffer: screenshot, description: AnnotatedScreenshotText } : void 0,
-      requestId
+      options: {
+        messages,
+        temperature: 0.1,
+        top_p: 1,
+        frequency_penalty: 0,
+        presence_penalty: 0,
+        tool_choice: "auto",
+        tools: actTools,
+        requestId
+      },
+      logger
     });
     const toolCalls = response.choices[0].message.tool_calls;
     if (toolCalls && toolCalls.length > 0) {
@@ -2152,42 +2189,54 @@ function extract(_0) {
     chunksSeen,
     chunksTotal,
     requestId,
-    isUsingTextExtract
+    logger,
+    isUsingTextExtract,
+    userProvidedInstructions
   }) {
     const isUsingAnthropic = llmClient.type === "anthropic";
     const extractionResponse = yield llmClient.createChatCompletion({
-      messages: [
-        buildExtractSystemPrompt(isUsingAnthropic, isUsingTextExtract),
-        buildExtractUserPrompt(instruction, domElements, isUsingAnthropic)
-      ],
-      response_model: {
-        schema,
-        name: "Extraction"
+      options: {
+        messages: [
+          buildExtractSystemPrompt(
+            isUsingAnthropic,
+            isUsingTextExtract,
+            userProvidedInstructions
+          ),
+          buildExtractUserPrompt(instruction, domElements, isUsingAnthropic)
+        ],
+        response_model: {
+          schema,
+          name: "Extraction"
+        },
+        temperature: 0.1,
+        top_p: 1,
+        frequency_penalty: 0,
+        presence_penalty: 0,
+        requestId
       },
-      temperature: 0.1,
-      top_p: 1,
-      frequency_penalty: 0,
-      presence_penalty: 0,
-      requestId
+      logger
     });
     const refinedResponse = yield llmClient.createChatCompletion({
-      messages: [
-        buildRefineSystemPrompt(),
-        buildRefineUserPrompt(
-          instruction,
-          previouslyExtractedContent,
-          extractionResponse
-        )
-      ],
-      response_model: {
-        schema,
-        name: "RefinedExtraction"
+      options: {
+        messages: [
+          buildRefineSystemPrompt(),
+          buildRefineUserPrompt(
+            instruction,
+            previouslyExtractedContent,
+            extractionResponse
+          )
+        ],
+        response_model: {
+          schema,
+          name: "RefinedExtraction"
+        },
+        temperature: 0.1,
+        top_p: 1,
+        frequency_penalty: 0,
+        presence_penalty: 0,
+        requestId
       },
-      temperature: 0.1,
-      top_p: 1,
-      frequency_penalty: 0,
-      presence_penalty: 0,
-      requestId
+      logger
     });
     const metadataSchema = import_zod2.z.object({
       progress: import_zod2.z.string().describe(
@@ -2198,24 +2247,27 @@ function extract(_0) {
       )
     });
     const metadataResponse = yield llmClient.createChatCompletion({
-      messages: [
-        buildMetadataSystemPrompt(),
-        buildMetadataPrompt(
-          instruction,
-          refinedResponse,
-          chunksSeen,
-          chunksTotal
-        )
-      ],
-      response_model: {
-        name: "Metadata",
-        schema: metadataSchema
+      options: {
+        messages: [
+          buildMetadataSystemPrompt(),
+          buildMetadataPrompt(
+            instruction,
+            refinedResponse,
+            chunksSeen,
+            chunksTotal
+          )
+        ],
+        response_model: {
+          name: "Metadata",
+          schema: metadataSchema
+        },
+        temperature: 0.1,
+        top_p: 1,
+        frequency_penalty: 0,
+        presence_penalty: 0,
+        requestId
       },
-      temperature: 0.1,
-      top_p: 1,
-      frequency_penalty: 0,
-      presence_penalty: 0,
-      requestId
+      logger
     });
     return __spreadProps(__spreadValues({}, refinedResponse), {
       metadata: metadataResponse
@@ -2227,299 +2279,74 @@ function observe(_0) {
     instruction,
     domElements,
     llmClient,
-    image,
-    requestId
+    requestId,
+    isUsingAccessibilityTree,
+    userProvidedInstructions,
+    logger,
+    returnAction = false
   }) {
     var _a, _b;
     const observeSchema = import_zod2.z.object({
       elements: import_zod2.z.array(
-        import_zod2.z.object({
+        import_zod2.z.object(__spreadValues({
           elementId: import_zod2.z.number().describe("the number of the element"),
           description: import_zod2.z.string().describe(
-            "a description of the element and what it is relevant for"
+            isUsingAccessibilityTree ? "a description of the accessible element and its purpose" : "a description of the element and what it is relevant for"
           )
-        })
-      ).describe("an array of elements that match the instruction")
+        }, returnAction ? {
+          method: import_zod2.z.string().describe(
+            "the candidate method/action to interact with the element. Select one of the available Playwright interaction methods."
+          ),
+          arguments: import_zod2.z.array(
+            import_zod2.z.string().describe(
+              "the arguments to pass to the method. For example, for a click, the arguments are empty, but for a fill, the arguments are the value to fill in."
+            )
+          )
+        } : {}))
+      ).describe(
+        isUsingAccessibilityTree ? "an array of accessible elements that match the instruction" : "an array of elements that match the instruction"
+      )
     });
     const observationResponse = yield llmClient.createChatCompletion({
-      messages: [
-        buildObserveSystemPrompt(),
-        buildObserveUserMessage(instruction, domElements)
-      ],
-      image: image ? { buffer: image, description: AnnotatedScreenshotText } : void 0,
-      response_model: {
-        schema: observeSchema,
-        name: "Observation"
+      options: {
+        messages: [
+          buildObserveSystemPrompt(
+            userProvidedInstructions,
+            isUsingAccessibilityTree
+          ),
+          buildObserveUserMessage(
+            instruction,
+            domElements,
+            isUsingAccessibilityTree
+          )
+        ],
+        response_model: {
+          schema: observeSchema,
+          name: "Observation"
+        },
+        temperature: 0.1,
+        top_p: 1,
+        frequency_penalty: 0,
+        presence_penalty: 0,
+        requestId
       },
-      temperature: 0.1,
-      top_p: 1,
-      frequency_penalty: 0,
-      presence_penalty: 0,
-      requestId
+      logger
     });
     const parsedResponse = {
-      elements: (_b = (_a = observationResponse.elements) == null ? void 0 : _a.map((el) => ({
-        elementId: Number(el.elementId),
-        description: String(el.description)
-      }))) != null ? _b : []
+      elements: (_b = (_a = observationResponse.elements) == null ? void 0 : _a.map((el) => {
+        const base = {
+          elementId: Number(el.elementId),
+          description: String(el.description)
+        };
+        return returnAction ? __spreadProps(__spreadValues({}, base), {
+          method: String(el.method),
+          arguments: el.arguments
+        }) : base;
+      })) != null ? _b : []
     };
     return parsedResponse;
   });
 }
-
-// lib/vision.ts
-var import_child_process = require("child_process");
-var import_fs = __toESM(require("fs"));
-var import_path = __toESM(require("path"));
-var import_sharp = __toESM(require("sharp"));
-var ScreenshotService = class {
-  constructor(page, selectorMap, verbose, externalLogger, isDebugEnabled = false) {
-    this.annotationBoxes = [];
-    this.numberPositions = [];
-    this.page = page;
-    this.selectorMap = selectorMap;
-    this.isDebugEnabled = isDebugEnabled;
-    this.verbose = verbose;
-    this.externalLogger = externalLogger;
-  }
-  log(logLine) {
-    if (this.verbose >= logLine.level) {
-      console.log(logLineToString(logLine));
-    }
-    if (this.externalLogger) {
-      this.externalLogger(logLine);
-    }
-  }
-  getScreenshot(fullpage = true, quality) {
-    return __async(this, null, function* () {
-      if (quality && (quality < 0 || quality > 100)) {
-        throw new Error("quality must be between 0 and 100");
-      }
-      return yield this.page.screenshot({
-        fullPage: fullpage,
-        quality,
-        type: "jpeg"
-      });
-    });
-  }
-  getScreenshotPixelCount(screenshot) {
-    return __async(this, null, function* () {
-      var _a, _b, _c, _d;
-      const image = (0, import_sharp.default)(screenshot);
-      const metadata = yield image.metadata();
-      if (!metadata.width || !metadata.height) {
-        this.log({
-          category: "screenshotService",
-          message: "Unable to determine image dimensions.",
-          level: 0,
-          auxiliary: {
-            width: {
-              value: (_b = (_a = metadata.width) == null ? void 0 : _a.toString()) != null ? _b : "undefined",
-              type: "string"
-              // might be undefined
-            },
-            height: {
-              value: (_d = (_c = metadata.height) == null ? void 0 : _c.toString()) != null ? _d : "undefined",
-              type: "string"
-              // might be undefined
-            }
-          }
-        });
-        throw new Error("Unable to determine image dimensions.");
-      }
-      const pixelCount = metadata.width * metadata.height;
-      this.log({
-        category: "screenshotService",
-        message: "got screenshot pixel count",
-        level: 1,
-        auxiliary: {
-          pixelCount: {
-            value: pixelCount.toString(),
-            type: "integer"
-          }
-        }
-      });
-      return pixelCount;
-    });
-  }
-  getAnnotatedScreenshot(fullpage) {
-    return __async(this, null, function* () {
-      this.annotationBoxes = [];
-      this.numberPositions = [];
-      const screenshot = yield this.getScreenshot(fullpage);
-      const image = (0, import_sharp.default)(screenshot);
-      const { width, height } = yield image.metadata();
-      this.log({
-        category: "screenshotService",
-        message: "annotating screenshot",
-        level: 2,
-        auxiliary: {
-          selectorMap: {
-            value: JSON.stringify(this.selectorMap),
-            type: "object"
-          }
-        }
-      });
-      const svgAnnotations = (yield Promise.all(
-        Object.entries(this.selectorMap).map(
-          (_0) => __async(this, [_0], function* ([id, selectors]) {
-            return this.createElementAnnotation(id, selectors).catch((error) => {
-              this.log({
-                category: "screenshotService",
-                message: "warning: failed to create screenshot annotation for element",
-                level: 2,
-                auxiliary: {
-                  message: {
-                    value: error.message,
-                    type: "string"
-                  },
-                  trace: {
-                    value: error.stack,
-                    type: "string"
-                  }
-                }
-              });
-            });
-          })
-        )
-      )).filter((annotation) => annotation !== null);
-      const scrollPosition = yield this.page.evaluate(() => {
-        return {
-          scrollX: window.scrollX,
-          scrollY: window.scrollY
-        };
-      });
-      const svg = `
-      <svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg" style="position:absolute;left:${-scrollPosition.scrollX}px;top:${-scrollPosition.scrollY}px;">
-        ${svgAnnotations.join("")}
-      </svg>
-    `;
-      const annotatedScreenshot = yield image.composite([{ input: Buffer.from(svg), top: 0, left: 0 }]).toBuffer();
-      if (this.isDebugEnabled) {
-        yield this.saveAndOpenScreenshot(annotatedScreenshot);
-      }
-      return annotatedScreenshot;
-    });
-  }
-  createElementAnnotation(id, selectors) {
-    return __async(this, null, function* () {
-      try {
-        let element = null;
-        const selectorPromises = selectors.map((selector) => __async(this, null, function* () {
-          try {
-            element = safeLocatorWithIframeSupport(this.page, selector);
-            const box2 = yield element.boundingBox({ timeout: 5e3 });
-            return box2;
-          } catch (e) {
-            return null;
-          }
-        }));
-        const boxes = yield Promise.all(selectorPromises);
-        const box = boxes.find((b) => b !== null);
-        if (!box) {
-          throw new Error(`Unable to create annotation for element ${id}`);
-        }
-        const scrollPosition = yield this.page.evaluate(() => ({
-          scrollX: window.scrollX,
-          scrollY: window.scrollY
-        }));
-        const adjustedBox = {
-          x: box.x + scrollPosition.scrollX,
-          y: box.y + scrollPosition.scrollY,
-          width: box.width,
-          height: box.height,
-          id
-        };
-        this.annotationBoxes.push(adjustedBox);
-        const numberPosition = this.findNonOverlappingNumberPosition(adjustedBox);
-        const circleRadius = 12;
-        return `
-        <rect x="${adjustedBox.x}" y="${adjustedBox.y}" width="${adjustedBox.width}" height="${adjustedBox.height}" 
-              fill="none" stroke="red" stroke-width="2" />
-        <circle cx="${numberPosition.x}" cy="${numberPosition.y}" r="${circleRadius}" fill="white" stroke="red" stroke-width="2" />
-        <text x="${numberPosition.x}" y="${numberPosition.y}" fill="red" font-size="16" font-weight="bold" 
-              text-anchor="middle" dominant-baseline="central">
-          ${id}
-        </text>
-      `;
-      } catch (error) {
-        this.log({
-          category: "screenshotService",
-          message: "warning: failed to create annotation for element",
-          level: 1,
-          auxiliary: {
-            element_id: {
-              value: id,
-              type: "string"
-            },
-            error: {
-              value: error.message,
-              type: "string"
-            },
-            trace: {
-              value: error.stack,
-              type: "string"
-            }
-          }
-        });
-        return "";
-      }
-    });
-  }
-  findNonOverlappingNumberPosition(box) {
-    const circleRadius = 12;
-    const position = {
-      x: box.x - circleRadius,
-      y: box.y - circleRadius
-    };
-    let attempts = 0;
-    const maxAttempts = 10;
-    const offset = 5;
-    while (this.isNumberOverlapping(position) && attempts < maxAttempts) {
-      position.y += offset;
-      attempts++;
-    }
-    this.numberPositions.push(position);
-    return position;
-  }
-  isNumberOverlapping(position) {
-    const circleRadius = 12;
-    return this.numberPositions.some(
-      (existingPosition) => Math.sqrt(
-        Math.pow(position.x - existingPosition.x, 2) + Math.pow(position.y - existingPosition.y, 2)
-      ) < circleRadius * 2
-    );
-  }
-  saveAndOpenScreenshot(screenshot) {
-    return __async(this, null, function* () {
-      const screenshotDir = import_path.default.join(process.cwd(), "screenshots");
-      if (!import_fs.default.existsSync(screenshotDir)) {
-        import_fs.default.mkdirSync(screenshotDir);
-      }
-      const timestamp = (/* @__PURE__ */ new Date()).toISOString().replace(/[:.]/g, "-");
-      const filename = import_path.default.join(screenshotDir, `screenshot-${timestamp}.png`);
-      import_fs.default.writeFileSync(filename, screenshot);
-      this.log({
-        category: "screenshotService",
-        message: "screenshot saved",
-        level: 1,
-        auxiliary: {
-          filename: {
-            value: filename,
-            type: "string"
-          }
-        }
-      });
-      if (process.platform === "win32") {
-        (0, import_child_process.exec)(`start ${filename}`);
-      } else if (process.platform === "darwin") {
-        (0, import_child_process.exec)(`open ${filename}`);
-      } else {
-        (0, import_child_process.exec)(`xdg-open ${filename}`);
-      }
-    });
-  }
-};
 
 // lib/handlers/actHandler.ts
 var StagehandActHandler = class {
@@ -2528,7 +2355,8 @@ var StagehandActHandler = class {
     llmProvider,
     enableCaching,
     logger,
-    stagehandPage
+    stagehandPage,
+    userProvidedInstructions
   }) {
     this.verbose = verbose;
     this.llmProvider = llmProvider;
@@ -2537,6 +2365,54 @@ var StagehandActHandler = class {
     this.actionCache = enableCaching ? new ActionCache(this.logger) : void 0;
     this.actions = {};
     this.stagehandPage = stagehandPage;
+    this.userProvidedInstructions = userProvidedInstructions;
+  }
+  /**
+   * Perform an immediate Playwright action based on an ObserveResult object
+   * that was returned from `page.observe(...)`.
+   */
+  actFromObserveResult(observe2) {
+    return __async(this, null, function* () {
+      var _a;
+      this.logger({
+        category: "action",
+        message: "Performing act from an ObserveResult",
+        level: 1,
+        auxiliary: {
+          observeResult: {
+            value: JSON.stringify(observe2),
+            type: "object"
+          }
+        }
+      });
+      const method = observe2.method;
+      const args = (_a = observe2.arguments) != null ? _a : [];
+      const selector = observe2.selector.replace("xpath=", "");
+      try {
+        yield this._performPlaywrightMethod(method, args, selector);
+        return {
+          success: true,
+          message: `Action [${method}] performed successfully on selector: ${selector}`,
+          action: observe2.description || `ObserveResult action (${method})`
+        };
+      } catch (err) {
+        this.logger({
+          category: "action",
+          message: "Error performing act from an ObserveResult",
+          level: 1,
+          auxiliary: {
+            error: { value: err.message, type: "string" },
+            trace: { value: err.stack, type: "string" },
+            observeResult: { value: JSON.stringify(observe2), type: "object" }
+          }
+        });
+        return {
+          success: false,
+          message: `Failed to perform act: ${err.message}`,
+          action: observe2.description || `ObserveResult action (${method})`
+        };
+      }
+    });
   }
   _recordAction(action, result) {
     return __async(this, null, function* () {
@@ -2548,7 +2424,6 @@ var StagehandActHandler = class {
   _verifyActionCompletion(_0) {
     return __async(this, arguments, function* ({
       completed,
-      verifierUseVision,
       requestId,
       action,
       steps,
@@ -2560,13 +2435,13 @@ var StagehandActHandler = class {
       }
       yield this.stagehandPage._waitForSettledDom(domSettleTimeoutMs);
       let verifyLLmClient = llmClient;
-      if (llmClient.modelName === "o1-mini" || llmClient.modelName === "o1-preview" || llmClient.modelName.startsWith("o1-")) {
+      if (llmClient.modelName.startsWith("o1") || llmClient.modelName.startsWith("o3")) {
         verifyLLmClient = this.llmProvider.getClient(
           "gpt-4o",
           llmClient.clientOptions
         );
       }
-      const { selectorMap } = yield this.stagehandPage.page.evaluate(() => {
+      const { outputString: domElements } = yield this.stagehandPage.page.evaluate(() => {
         return window.processAllOfDom();
       });
       let actionCompleted = false;
@@ -2582,54 +2457,11 @@ var StagehandActHandler = class {
             }
           }
         });
-        let domElements = void 0;
-        let fullpageScreenshot = void 0;
-        if (verifierUseVision) {
-          try {
-            const screenshotService = new ScreenshotService(
-              this.stagehandPage.page,
-              selectorMap,
-              this.verbose,
-              this.logger
-            );
-            fullpageScreenshot = yield screenshotService.getScreenshot(true, 15);
-          } catch (e) {
-            this.logger({
-              category: "action",
-              message: "error getting full page screenshot. trying again...",
-              level: 1,
-              auxiliary: {
-                error: {
-                  value: e.message,
-                  type: "string"
-                },
-                trace: {
-                  value: e.stack,
-                  type: "string"
-                }
-              }
-            });
-            const screenshotService = new ScreenshotService(
-              this.stagehandPage.page,
-              selectorMap,
-              this.verbose,
-              this.logger
-            );
-            fullpageScreenshot = yield screenshotService.getScreenshot(true, 15);
-          }
-        } else {
-          ({ outputString: domElements } = yield this.stagehandPage.page.evaluate(
-            () => {
-              return window.processAllOfDom();
-            }
-          ));
-        }
         actionCompleted = yield verifyActCompletion({
           goal: action,
           steps,
           llmProvider: this.llmProvider,
           llmClient: verifyLLmClient,
-          screenshot: fullpageScreenshot,
           domElements,
           logger: this.logger,
           requestId
@@ -2793,6 +2625,162 @@ var StagehandActHandler = class {
           });
           throw new PlaywrightCommandException(e.message);
         }
+      } else if (method === "click") {
+        this.logger({
+          category: "action",
+          message: "page URL before click",
+          level: 2,
+          auxiliary: {
+            url: {
+              value: this.stagehandPage.page.url(),
+              type: "string"
+            }
+          }
+        });
+        try {
+          const isRadio = yield locator.evaluate((el) => {
+            return el instanceof HTMLInputElement && el.type === "radio";
+          });
+          const clickArg = args.length ? args[0] : void 0;
+          if (isRadio) {
+            const inputId = yield locator.evaluate((el) => el.id);
+            let labelLocator;
+            if (inputId) {
+              labelLocator = this.stagehandPage.page.locator(
+                `label[for="${inputId}"]`
+              );
+            }
+            if (!labelLocator || (yield labelLocator.count()) < 1) {
+              labelLocator = this.stagehandPage.page.locator(`xpath=${xpath}/ancestor::label`).first();
+            }
+            if ((yield labelLocator.count()) < 1) {
+              labelLocator = locator.locator(`xpath=following-sibling::label`).first();
+              if ((yield labelLocator.count()) < 1) {
+                labelLocator = locator.locator(`xpath=preceding-sibling::label`).first();
+              }
+            }
+            if ((yield labelLocator.count()) > 0) {
+              yield labelLocator.click(clickArg);
+            } else {
+              yield locator.click(clickArg);
+            }
+          } else {
+            const clickArg2 = args.length ? args[0] : void 0;
+            yield locator.click(clickArg2);
+          }
+        } catch (e) {
+          this.logger({
+            category: "action",
+            message: "error performing click",
+            level: 1,
+            auxiliary: {
+              error: {
+                value: e.message,
+                type: "string"
+              },
+              trace: {
+                value: e.stack,
+                type: "string"
+              },
+              xpath: {
+                value: JSON.stringify(xpath),
+                type: "string"
+              },
+              method: {
+                value: method,
+                type: "string"
+              },
+              args: {
+                value: JSON.stringify(args),
+                type: "object"
+              }
+            }
+          });
+          throw new PlaywrightCommandException(e.message);
+        }
+        this.logger({
+          category: "action",
+          message: "clicking element, checking for page navigation",
+          level: 1,
+          auxiliary: {
+            xpath: {
+              value: JSON.stringify(xpath),
+              type: "string"
+            }
+          }
+        });
+        const newOpenedTab = yield Promise.race([
+          new Promise((resolve) => {
+            this.stagehandPage.context.once("page", (page) => resolve(page));
+            setTimeout(() => resolve(null), 1500);
+          })
+        ]);
+        this.logger({
+          category: "action",
+          message: "clicked element",
+          level: 1,
+          auxiliary: {
+            newOpenedTab: {
+              value: newOpenedTab ? "opened a new tab" : "no new tabs opened",
+              type: "string"
+            }
+          }
+        });
+        if (newOpenedTab) {
+          this.logger({
+            category: "action",
+            message: "new page detected (new tab) with URL",
+            level: 1,
+            auxiliary: {
+              url: {
+                value: newOpenedTab.url(),
+                type: "string"
+              }
+            }
+          });
+          yield newOpenedTab.close();
+          yield this.stagehandPage.page.goto(newOpenedTab.url());
+          yield this.stagehandPage.page.waitForLoadState("domcontentloaded");
+          yield this.stagehandPage._waitForSettledDom(domSettleTimeoutMs);
+        }
+        yield Promise.race([
+          this.stagehandPage.page.waitForLoadState("networkidle"),
+          new Promise((resolve) => setTimeout(resolve, 5e3))
+        ]).catch((e) => {
+          this.logger({
+            category: "action",
+            message: "network idle timeout hit",
+            level: 1,
+            auxiliary: {
+              trace: {
+                value: e.stack,
+                type: "string"
+              },
+              message: {
+                value: e.message,
+                type: "string"
+              }
+            }
+          });
+        });
+        this.logger({
+          category: "action",
+          message: "finished waiting for (possible) page navigation",
+          level: 1
+        });
+        if (this.stagehandPage.page.url() !== initialUrl) {
+          this.logger({
+            category: "action",
+            message: "new page detected with URL",
+            level: 1,
+            auxiliary: {
+              url: {
+                value: this.stagehandPage.page.url(),
+                type: "string"
+              }
+            }
+          });
+        }
       } else if (typeof locator[method] === "function") {
         this.logger({
           category: "action",
@@ -2836,91 +2824,6 @@ var StagehandActHandler = class {
             }
           });
           throw new PlaywrightCommandException(e.message);
-        }
-        if (method === "click") {
-          this.logger({
-            category: "action",
-            message: "clicking element, checking for page navigation",
-            level: 1,
-            auxiliary: {
-              xpath: {
-                value: JSON.stringify(xpath),
-                type: "string"
-              }
-            }
-          });
-          const newOpenedTab = yield Promise.race([
-            new Promise((resolve) => {
-              this.stagehandPage.context.once("page", (page) => resolve(page));
-              setTimeout(() => resolve(null), 1500);
-            })
-          ]);
-          this.logger({
-            category: "action",
-            message: "clicked element",
-            level: 1,
-            auxiliary: {
-              newOpenedTab: {
-                value: newOpenedTab ? "opened a new tab" : "no new tabs opened",
-                type: "string"
-              }
-            }
-          });
-          if (newOpenedTab) {
-            this.logger({
-              category: "action",
-              message: "new page detected (new tab) with URL",
-              level: 1,
-              auxiliary: {
-                url: {
-                  value: newOpenedTab.url(),
-                  type: "string"
-                }
-              }
-            });
-            yield newOpenedTab.close();
-            yield this.stagehandPage.page.goto(newOpenedTab.url());
-            yield this.stagehandPage.page.waitForLoadState("domcontentloaded");
-            yield this.stagehandPage._waitForSettledDom(domSettleTimeoutMs);
-          }
-          yield Promise.race([
-            this.stagehandPage.page.waitForLoadState("networkidle"),
-            new Promise((resolve) => setTimeout(resolve, 5e3))
-          ]).catch((e) => {
-            this.logger({
-              category: "action",
-              message: "network idle timeout hit",
-              level: 1,
-              auxiliary: {
-                trace: {
-                  value: e.stack,
-                  type: "string"
-                },
-                message: {
-                  value: e.message,
-                  type: "string"
-                }
-              }
-            });
-          });
-          this.logger({
-            category: "action",
-            message: "finished waiting for (possible) page navigation",
-            level: 1
-          });
-          if (this.stagehandPage.page.url() !== initialUrl) {
-            this.logger({
-              category: "action",
-              message: "new page detected with URL",
-              level: 1,
-              auxiliary: {
-                url: {
-                  value: this.stagehandPage.page.url(),
-                  type: "string"
-                }
-              }
-            });
-          }
         }
       } else {
         this.logger({
@@ -3122,8 +3025,6 @@ var StagehandActHandler = class {
       steps,
       chunksSeen,
       llmClient,
-      useVision,
-      verifierUseVision,
       retries,
       variables,
       domSettleTimeoutMs
@@ -3238,7 +3139,6 @@ var StagehandActHandler = class {
         if (cachedStep.completed) {
           const actionCompleted = yield this._verifyActionCompletion({
             completed: true,
-            verifierUseVision,
             llmClient,
             steps,
             requestId,
@@ -3269,8 +3169,6 @@ var StagehandActHandler = class {
           steps,
           chunksSeen,
           llmClient,
-          useVision,
-          verifierUseVision,
           retries,
           requestId,
           variables,
@@ -3305,8 +3203,6 @@ var StagehandActHandler = class {
       steps = "",
       chunksSeen,
       llmClient,
-      useVision,
-      verifierUseVision,
       retries = 0,
       requestId,
       variables,
@@ -3326,8 +3222,6 @@ var StagehandActHandler = class {
             steps,
             chunksSeen,
             llmClient,
-            useVision,
-            verifierUseVision,
             retries,
             variables,
             domSettleTimeoutMs
@@ -3340,8 +3234,6 @@ var StagehandActHandler = class {
               steps,
               chunksSeen,
               llmClient,
-              useVision,
-              verifierUseVision,
               retries,
               requestId,
               variables,
@@ -3350,25 +3242,6 @@ var StagehandActHandler = class {
               domSettleTimeoutMs
             });
           }
-        }
-        if (!llmClient.hasVision && (useVision !== false || verifierUseVision)) {
-          this.logger({
-            category: "action",
-            message: "model does not support vision but useVision was not false. defaulting to false.",
-            level: 1,
-            auxiliary: {
-              model: {
-                value: llmClient.modelName,
-                type: "string"
-              },
-              useVision: {
-                value: useVision.toString(),
-                type: "boolean"
-              }
-            }
-          });
-          useVision = false;
-          verifierUseVision = false;
         }
         this.logger({
           category: "action",
@@ -3419,39 +3292,15 @@ var StagehandActHandler = class {
             }
           }
         });
-        let annotatedScreenshot;
-        if (useVision === true) {
-          if (!llmClient.hasVision) {
-            this.logger({
-              category: "action",
-              message: "model does not support vision. skipping vision processing.",
-              level: 1,
-              auxiliary: {
-                model: {
-                  value: llmClient.modelName,
-                  type: "string"
-                }
-              }
-            });
-          } else {
-            const screenshotService = new ScreenshotService(
-              this.stagehandPage.page,
-              selectorMap,
-              this.verbose,
-              this.logger
-            );
-            annotatedScreenshot = yield screenshotService.getAnnotatedScreenshot(false);
-          }
-        }
         const response = yield act({
           action,
           domElements: outputString,
           steps,
           llmClient,
-          screenshot: annotatedScreenshot,
           logger: this.logger,
           requestId,
-          variables
+          variables,
+          userProvidedInstructions: this.userProvidedInstructions
         });
         this.logger({
           category: "action",
@@ -3484,36 +3333,6 @@ var StagehandActHandler = class {
               steps: steps + (!steps.endsWith("\n") ? "\n" : "") + "## Step: Scrolled to another section\n",
               chunksSeen,
               llmClient,
-              useVision,
-              verifierUseVision,
-              requestId,
-              variables,
-              previousSelectors,
-              skipActionCacheForThisStep,
-              domSettleTimeoutMs
-            });
-          } else if (useVision === "fallback") {
-            this.logger({
-              category: "action",
-              message: "switching to vision-based processing",
-              level: 1,
-              auxiliary: {
-                useVision: {
-                  value: useVision.toString(),
-                  type: "string"
-                }
-              }
-            });
-            yield this.stagehandPage.page.evaluate(
-              () => window.scrollToHeight(0)
-            );
-            return yield this.act({
-              action,
-              steps,
-              chunksSeen,
-              llmClient,
-              useVision: true,
-              verifierUseVision,
               requestId,
               variables,
               previousSelectors,
@@ -3657,14 +3476,12 @@ var StagehandActHandler = class {
           }
           const actionCompleted = yield this._verifyActionCompletion({
             completed: response.completed,
-            verifierUseVision,
             requestId,
             action,
             steps,
             llmClient,
             domSettleTimeoutMs
           }).catch((error) => {
-            console.log("error verifying action completion", error);
             this.logger({
               category: "action",
               message: "error verifying action completion. Assuming action completed.",
@@ -3672,6 +3489,10 @@ var StagehandActHandler = class {
               auxiliary: {
                 error: {
                   value: error.message,
+                  type: "string"
+                },
+                trace: {
+                  value: error.stack,
                   type: "string"
                 }
               }
@@ -3689,8 +3510,6 @@ var StagehandActHandler = class {
               steps,
               llmClient,
               chunksSeen,
-              useVision,
-              verifierUseVision,
               requestId,
               variables,
               previousSelectors: [...previousSelectors, foundXpath],
@@ -3735,8 +3554,6 @@ var StagehandActHandler = class {
               action,
               steps,
               llmClient,
-              useVision,
-              verifierUseVision,
               retries: retries + 1,
               chunksSeen,
               requestId,
@@ -3787,17 +3604,47 @@ var StagehandActHandler = class {
   }
 };
 
+// lib/StagehandContext.ts
+var StagehandContext = class _StagehandContext {
+  constructor(context, stagehand) {
+    this.intContext = context;
+    this.stagehand = stagehand;
+  }
+  static init(context, stagehand) {
+    return __async(this, null, function* () {
+      const proxyContext = new Proxy(context, {
+        get: (target, prop) => {
+          return target[prop];
+        }
+      });
+      const instance = new _StagehandContext(proxyContext, stagehand);
+      return instance;
+    });
+  }
+  get context() {
+    return this.intContext;
+  }
+};
+
+// types/page.ts
+var import_zod3 = require("zod");
+var defaultExtractSchema = import_zod3.z.object({
+  extraction: import_zod3.z.string()
+});
+
 // lib/handlers/extractHandler.ts
 var PROXIMITY_THRESHOLD = 15;
 var StagehandExtractHandler = class {
   constructor({
     stagehand,
     logger,
-    stagehandPage
+    stagehandPage,
+    userProvidedInstructions
   }) {
     this.stagehand = stagehand;
     this.logger = logger;
     this.stagehandPage = stagehandPage;
+    this.userProvidedInstructions = userProvidedInstructions;
   }
   extract(_0) {
     return __async(this, arguments, function* ({
@@ -3895,7 +3742,9 @@ var StagehandExtractHandler = class {
             width: box.width,
             height: box.height
           };
-          allAnnotations.push(annotation);
+          if (annotation.text.length > 0) {
+            allAnnotations.push(annotation);
+          }
         }
       }
       const annotationsGroupedByText = /* @__PURE__ */ new Map();
@@ -3935,7 +3784,9 @@ var StagehandExtractHandler = class {
         chunksSeen: 1,
         chunksTotal: 1,
         llmClient,
-        requestId
+        requestId,
+        userProvidedInstructions: this.userProvidedInstructions,
+        logger: this.logger
       });
       const _a = extractionResponse, {
         metadata: { completed }
@@ -4035,7 +3886,9 @@ var StagehandExtractHandler = class {
         chunksSeen: chunksSeen.length,
         chunksTotal: chunks.length,
         requestId,
-        isUsingTextExtract: false
+        isUsingTextExtract: false,
+        userProvidedInstructions: this.userProvidedInstructions,
+        logger: this.logger
       });
       const _a = extractionResponse, {
         metadata: { completed }
@@ -4091,16 +3944,304 @@ var StagehandExtractHandler = class {
   }
 };
 
+// lib/a11y/utils.ts
+function formatSimplifiedTree(node, level = 0) {
+  var _a;
+  const indent = "  ".repeat(level);
+  let result = `${indent}[${node.nodeId}] ${node.role}${node.name ? `: ${node.name}` : ""}
+`;
+  if ((_a = node.children) == null ? void 0 : _a.length) {
+    result += node.children.map((child) => formatSimplifiedTree(child, level + 1)).join("");
+  }
+  return result;
+}
+function cleanStructuralNodes(node, page, logger) {
+  return __async(this, null, function* () {
+    if (node.nodeId && parseInt(node.nodeId) < 0) {
+      return null;
+    }
+    if (!node.children || node.children.length === 0) {
+      return node.role === "generic" || node.role === "none" ? null : node;
+    }
+    const cleanedChildrenPromises = node.children.map(
+      (child) => cleanStructuralNodes(child, page, logger)
+    );
+    const resolvedChildren = yield Promise.all(cleanedChildrenPromises);
+    const cleanedChildren = resolvedChildren.filter(
+      (child) => child !== null
+    );
+    if (node.role === "generic" || node.role === "none") {
+      if (cleanedChildren.length === 1) {
+        return cleanedChildren[0];
+      } else if (cleanedChildren.length === 0) {
+        return null;
+      }
+    }
+    if (page && logger && node.backendDOMNodeId !== void 0 && (node.role === "generic" || node.role === "none")) {
+      try {
+        const { object } = yield page.sendCDP("DOM.resolveNode", {
+          backendNodeId: node.backendDOMNodeId
+        });
+        if (object && object.objectId) {
+          try {
+            const { result } = yield page.sendCDP("Runtime.callFunctionOn", {
+              objectId: object.objectId,
+              functionDeclaration: `
+              function() {
+                return this.tagName ? this.tagName.toLowerCase() : "";
+              }
+            `,
+              returnByValue: true
+            });
+            if (result == null ? void 0 : result.value) {
+              node.role = result.value;
+            }
+          } catch (tagNameError) {
+            logger({
+              category: "observation",
+              message: `Could not fetch tagName for node ${node.backendDOMNodeId}`,
+              level: 2,
+              auxiliary: {
+                error: {
+                  value: tagNameError.message,
+                  type: "string"
+                }
+              }
+            });
+          }
+        }
+      } catch (resolveError) {
+        logger({
+          category: "observation",
+          message: `Could not resolve DOM node ID ${node.backendDOMNodeId}`,
+          level: 2,
+          auxiliary: {
+            error: {
+              value: resolveError.message,
+              type: "string"
+            }
+          }
+        });
+      }
+    }
+    return cleanedChildren.length > 0 ? __spreadProps(__spreadValues({}, node), { children: cleanedChildren }) : node;
+  });
+}
+function buildHierarchicalTree(nodes, page, logger) {
+  return __async(this, null, function* () {
+    const nodeMap = /* @__PURE__ */ new Map();
+    nodes.forEach((node) => {
+      const nodeIdValue = parseInt(node.nodeId, 10);
+      if (nodeIdValue < 0) {
+        return;
+      }
+      const hasChildren = node.childIds && node.childIds.length > 0;
+      const hasValidName = node.name && node.name.trim() !== "";
+      const isInteractive = node.role !== "none" && node.role !== "generic" && node.role !== "InlineTextBox";
+      if (!hasValidName && !hasChildren && !isInteractive) {
+        return;
+      }
+      nodeMap.set(node.nodeId, __spreadValues(__spreadValues(__spreadValues(__spreadValues({
+        role: node.role,
+        nodeId: node.nodeId
+      }, hasValidName && { name: node.name }), node.description && { description: node.description }), node.value && { value: node.value }), node.backendDOMNodeId !== void 0 && {
+        backendDOMNodeId: node.backendDOMNodeId
+      }));
+    });
+    nodes.forEach((node) => {
+      if (node.parentId && nodeMap.has(node.nodeId)) {
+        const parentNode = nodeMap.get(node.parentId);
+        const currentNode = nodeMap.get(node.nodeId);
+        if (parentNode && currentNode) {
+          if (!parentNode.children) {
+            parentNode.children = [];
+          }
+          parentNode.children.push(currentNode);
+        }
+      }
+    });
+    const rootNodes = nodes.filter((node) => !node.parentId && nodeMap.has(node.nodeId)).map((node) => nodeMap.get(node.nodeId)).filter(Boolean);
+    const cleanedTreePromises = rootNodes.map(
+      (node) => cleanStructuralNodes(node, page, logger)
+    );
+    const finalTree = (yield Promise.all(cleanedTreePromises)).filter(
+      Boolean
+    );
+    const simplifiedFormat = finalTree.map((node) => formatSimplifiedTree(node)).join("\n");
+    return {
+      tree: finalTree,
+      simplified: simplifiedFormat
+    };
+  });
+}
+function getAccessibilityTree(page, logger) {
+  return __async(this, null, function* () {
+    yield page.enableCDP("Accessibility");
+    try {
+      const scrollableBackendIds = yield findScrollableElementIds(page);
+      const { nodes } = yield page.sendCDP(
+        "Accessibility.getFullAXTree"
+      );
+      const startTime = Date.now();
+      const hierarchicalTree = yield buildHierarchicalTree(
+        nodes.map((node) => {
+          var _a, _b, _c, _d;
+          let roleValue = ((_a = node.role) == null ? void 0 : _a.value) || "";
+          if (scrollableBackendIds.has(node.backendDOMNodeId)) {
+            if (roleValue === "generic" || roleValue === "none") {
+              roleValue = "scrollable";
+            } else {
+              roleValue = roleValue ? `scrollable, ${roleValue}` : "scrollable";
+            }
+          }
+          return {
+            role: roleValue,
+            name: (_b = node.name) == null ? void 0 : _b.value,
+            description: (_c = node.description) == null ? void 0 : _c.value,
+            value: (_d = node.value) == null ? void 0 : _d.value,
+            nodeId: node.nodeId,
+            backendDOMNodeId: node.backendDOMNodeId,
+            parentId: node.parentId,
+            childIds: node.childIds
+          };
+        }),
+        page,
+        logger
+      );
+      logger({
+        category: "observation",
+        message: `got accessibility tree in ${Date.now() - startTime}ms`,
+        level: 1
+      });
+      return hierarchicalTree;
+    } catch (error) {
+      logger({
+        category: "observation",
+        message: "Error getting accessibility tree",
+        level: 1,
+        auxiliary: {
+          error: {
+            value: error.message,
+            type: "string"
+          },
+          trace: {
+            value: error.stack,
+            type: "string"
+          }
+        }
+      });
+      throw error;
+    } finally {
+      yield page.disableCDP("Accessibility");
+    }
+  });
+}
+var functionString = `
+function getNodePath(el) {
+  if (!el || (el.nodeType !== Node.ELEMENT_NODE && el.nodeType !== Node.TEXT_NODE)) {
+    console.log("el is not a valid node type");
+    return "";
+  }
+
+  const parts = [];
+  let current = el;
+
+  while (current && (current.nodeType === Node.ELEMENT_NODE || current.nodeType === Node.TEXT_NODE)) {
+    let index = 0;
+    let hasSameTypeSiblings = false;
+    const siblings = current.parentElement
+      ? Array.from(current.parentElement.childNodes)
+      : [];
+
+    for (let i = 0; i < siblings.length; i++) {
+      const sibling = siblings[i];
+      if (
+        sibling.nodeType === current.nodeType &&
+        sibling.nodeName === current.nodeName
+      ) {
+        index = index + 1;
+        hasSameTypeSiblings = true;
+        if (sibling.isSameNode(current)) {
+          break;
+        }
+      }
+    }
+
+    if (!current || !current.parentNode) break;
+    if (current.nodeName.toLowerCase() === "html"){
+      parts.unshift("html");
+      break;
+    }
+
+    // text nodes are handled differently in XPath
+    if (current.nodeName !== "#text") {
+      const tagName = current.nodeName.toLowerCase();
+      const pathIndex = hasSameTypeSiblings ? \`[\${index}]\` : "";
+      parts.unshift(\`\${tagName}\${pathIndex}\`);
+    }
+    
+    current = current.parentElement;
+  }
+
+  return parts.length ? \`/\${parts.join("/")}\` : "";
+}`;
+function getXPathByResolvedObjectId(cdpClient, resolvedObjectId) {
+  return __async(this, null, function* () {
+    const { result } = yield cdpClient.send("Runtime.callFunctionOn", {
+      objectId: resolvedObjectId,
+      functionDeclaration: `function() {
+      ${functionString}
+      return getNodePath(this);
+    }`,
+      returnByValue: true
+    });
+    return result.value || "";
+  });
+}
+function findScrollableElementIds(stagehandPage) {
+  return __async(this, null, function* () {
+    const xpaths = yield stagehandPage.page.evaluate(() => {
+      return window.getScrollableElementXpaths();
+    });
+    const scrollableBackendIds = /* @__PURE__ */ new Set();
+    for (const xpath of xpaths) {
+      if (!xpath) continue;
+      const { result } = yield stagehandPage.sendCDP("Runtime.evaluate", {
+        expression: `
+        (function() {
+          const res = document.evaluate(${JSON.stringify(
+          xpath
+        )}, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null);
+          return res.singleNodeValue;
+        })();
+      `,
+        returnByValue: false
+      });
+      if (result == null ? void 0 : result.objectId) {
+        const { node } = yield stagehandPage.sendCDP("DOM.describeNode", {
+          objectId: result.objectId
+        });
+        if (node == null ? void 0 : node.backendNodeId) {
+          scrollableBackendIds.add(node.backendNodeId);
+        }
+      }
+    }
+    return scrollableBackendIds;
+  });
+}
+
 // lib/handlers/observeHandler.ts
 var StagehandObserveHandler = class {
   constructor({
     stagehand,
     logger,
-    stagehandPage
+    stagehandPage,
+    userProvidedInstructions
   }) {
     this.stagehand = stagehand;
     this.logger = logger;
     this.stagehandPage = stagehandPage;
+    this.userProvidedInstructions = userProvidedInstructions;
     this.observations = {};
   }
   _recordObservation(instruction, result) {
@@ -4113,11 +4254,10 @@ var StagehandObserveHandler = class {
   observe(_0) {
     return __async(this, arguments, function* ({
       instruction,
-      useVision,
-      fullPage,
       llmClient,
       requestId,
-      domSettleTimeoutMs
+      returnAction,
+      onlyVisible
     }) {
       if (!instruction) {
         instruction = `Find elements that can be used for any future actions in the page. These may be navigation links, related pages, section/subsection links, buttons, or other interactive elements. Be comprehensive: if there are multiple elements that may be relevant for future actions, return all of them.`;
@@ -4133,53 +4273,80 @@ var StagehandObserveHandler = class {
           }
         }
       });
-      yield this.stagehandPage._waitForSettledDom(domSettleTimeoutMs);
-      yield this.stagehandPage.startDomDebug();
-      const evalResult = yield this.stagehand.page.evaluate(
-        (fullPage2) => fullPage2 ? window.processAllOfDom() : window.processDom([]),
-        fullPage
-      );
-      const { selectorMap } = evalResult;
-      let { outputString } = evalResult;
-      let annotatedScreenshot;
-      if (useVision === true) {
-        if (!llmClient.hasVision) {
-          this.logger({
-            category: "observation",
-            message: "Model does not support vision. Skipping vision processing.",
-            level: 1,
-            auxiliary: {
-              model: {
-                value: llmClient.modelName,
-                type: "string"
-              }
-            }
-          });
-        } else {
-          const screenshotService = new ScreenshotService(
-            this.stagehand.page,
-            selectorMap,
-            this.verbose,
-            this.logger
-          );
-          annotatedScreenshot = yield screenshotService.getAnnotatedScreenshot(fullPage);
-          outputString = "n/a. use the image to find the elements.";
-        }
+      let selectorMap = {};
+      let outputString;
+      const useAccessibilityTree = !onlyVisible;
+      if (useAccessibilityTree) {
+        yield this.stagehandPage._waitForSettledDom();
+        const tree = yield getAccessibilityTree(this.stagehandPage, this.logger);
+        this.logger({
+          category: "observation",
+          message: "Getting accessibility tree data",
+          level: 1
+        });
+        outputString = tree.simplified;
+      } else {
+        const evalResult = yield this.stagehand.page.evaluate(() => {
+          return window.processAllOfDom().then((result) => result);
+        });
+        ({ outputString, selectorMap } = evalResult);
       }
       const observationResponse = yield observe({
         instruction,
         domElements: outputString,
         llmClient,
-        image: annotatedScreenshot,
-        requestId
+        requestId,
+        userProvidedInstructions: this.userProvidedInstructions,
+        logger: this.logger,
+        isUsingAccessibilityTree: useAccessibilityTree,
+        returnAction
       });
-      const elementsWithSelectors = observationResponse.elements.map(
-        (element) => {
+      const elementsWithSelectors = yield Promise.all(
+        observationResponse.elements.map((element) => __async(this, null, function* () {
           const _a = element, { elementId } = _a, rest = __objRest(_a, ["elementId"]);
+          if (useAccessibilityTree) {
+            this.logger({
+              category: "observation",
+              message: "Getting xpath for element",
+              level: 1,
+              auxiliary: {
+                elementId: {
+                  value: elementId.toString(),
+                  type: "string"
+                }
+              }
+            });
+            const args = { backendNodeId: elementId };
+            const { object } = yield this.stagehandPage.sendCDP("DOM.resolveNode", args);
+            if (!object || !object.objectId) {
+              this.logger({
+                category: "observation",
+                message: `Invalid object ID returned for element: ${elementId}`,
+                level: 1
+              });
+            }
+            const xpath = yield getXPathByResolvedObjectId(
+              yield this.stagehandPage.getCDPClient(),
+              object.objectId
+            );
+            if (!xpath || xpath === "") {
+              this.logger({
+                category: "observation",
+                message: `Empty xpath returned for element: ${elementId}`,
+                level: 1
+              });
+            }
+            return __spreadProps(__spreadValues({}, rest), {
+              selector: `xpath=${xpath}`
+              // Provisioning or future use if we want to use direct CDP
+              // backendNodeId: elementId,
+            });
+          }
           return __spreadProps(__spreadValues({}, rest), {
             selector: `xpath=${selectorMap[elementId][0]}`
+            // backendNodeId: backendNodeIdMap[elementId],
           });
-        }
+        }))
       );
       yield this.stagehandPage.cleanupDomDebug();
       this.logger({
@@ -4200,41 +4367,58 @@ var StagehandObserveHandler = class {
 };
 
 // lib/StagehandPage.ts
-var StagehandPage = class {
-  constructor(page, stagehand, context, llmClient) {
+var StagehandPage = class _StagehandPage {
+  constructor(page, stagehand, context, llmClient, userProvidedInstructions) {
+    this.cdpClient = null;
     this.intPage = Object.assign(page, {
       act: () => {
-        throw new Error("act() is not implemented on the base page object");
+        throw new Error(
+          "You seem to be calling `act` on a page in an uninitialized `Stagehand` object. Ensure you are running `await stagehand.init()` on the Stagehand object before referencing the `page` object."
+        );
       },
       extract: () => {
-        throw new Error("extract() is not implemented on the base page object");
+        throw new Error(
+          "You seem to be calling `extract` on a page in an uninitialized `Stagehand` object. Ensure you are running `await stagehand.init()` on the Stagehand object before referencing the `page` object."
+        );
       },
       observe: () => {
-        throw new Error("observe() is not implemented on the base page object");
+        throw new Error(
+          "You seem to be calling `observe` on a page in an uninitialized `Stagehand` object. Ensure you are running `await stagehand.init()` on the Stagehand object before referencing the `page` object."
+        );
+      },
+      on: () => {
+        throw new Error(
+          "You seem to be referencing a page in an uninitialized `Stagehand` object. Ensure you are running `await stagehand.init()` on the Stagehand object before referencing the `page` object."
+        );
       }
     });
     this.stagehand = stagehand;
     this.intContext = context;
-    this.actHandler = new StagehandActHandler({
-      verbose: this.stagehand.verbose,
-      llmProvider: this.stagehand.llmProvider,
-      enableCaching: this.stagehand.enableCaching,
-      logger: this.stagehand.logger,
-      stagehandPage: this,
-      stagehandContext: this.intContext,
-      llmClient
-    });
-    this.extractHandler = new StagehandExtractHandler({
-      stagehand: this.stagehand,
-      logger: this.stagehand.logger,
-      stagehandPage: this
-    });
-    this.observeHandler = new StagehandObserveHandler({
-      stagehand: this.stagehand,
-      logger: this.stagehand.logger,
-      stagehandPage: this
-    });
     this.llmClient = llmClient;
+    if (this.llmClient) {
+      this.actHandler = new StagehandActHandler({
+        verbose: this.stagehand.verbose,
+        llmProvider: this.stagehand.llmProvider,
+        enableCaching: this.stagehand.enableCaching,
+        logger: this.stagehand.logger,
+        stagehandPage: this,
+        stagehandContext: this.intContext,
+        llmClient,
+        userProvidedInstructions
+      });
+      this.extractHandler = new StagehandExtractHandler({
+        stagehand: this.stagehand,
+        logger: this.stagehand.logger,
+        stagehandPage: this,
+        userProvidedInstructions
+      });
+      this.observeHandler = new StagehandObserveHandler({
+        stagehand: this.stagehand,
+        logger: this.stagehand.logger,
+        stagehandPage: this,
+        userProvidedInstructions
+      });
+    }
   }
   init() {
     return __async(this, null, function* () {
@@ -4255,20 +4439,54 @@ var StagehandPage = class {
               yield this._waitForSettledDom();
               return result;
             });
-          if (prop === "act") {
-            return (options) => __async(this, null, function* () {
-              return this.act(options);
-            });
+          if (this.llmClient) {
+            if (prop === "act") {
+              return (options) => __async(this, null, function* () {
+                return this.act(options);
+              });
+            }
+            if (prop === "extract") {
+              return (options) => __async(this, null, function* () {
+                return this.extract(options);
+              });
+            }
+            if (prop === "observe") {
+              return (options) => __async(this, null, function* () {
+                return this.observe(options);
+              });
+            }
+          } else {
+            if (prop === "act" || prop === "extract" || prop === "observe") {
+              return () => {
+                throw new Error(
+                  "No LLM API key or LLM Client configured. An LLM API key or a custom LLM Client is required to use act, extract, or observe."
+                );
+              };
+            }
           }
-          if (prop === "extract") {
-            return (options) => __async(this, null, function* () {
-              return this.extract(options);
-            });
-          }
-          if (prop === "observe") {
-            return (options) => __async(this, null, function* () {
-              return this.observe(options);
-            });
+          if (prop === "on") {
+            return (event, listener) => {
+              if (event === "popup") {
+                return this.context.on("page", (page2) => __async(this, null, function* () {
+                  const newContext = yield StagehandContext.init(
+                    page2.context(),
+                    stagehand
+                  );
+                  const newStagehandPage = new _StagehandPage(
+                    page2,
+                    stagehand,
+                    newContext,
+                    this.llmClient
+                  );
+                  yield newStagehandPage.init();
+                  listener(newStagehandPage.page);
+                }));
+              }
+              return this.context.on(
+                event,
+                listener
+              );
+            };
           }
           return target[prop];
         }
@@ -4392,19 +4610,45 @@ var StagehandPage = class {
       }
     });
   }
-  act(_0) {
-    return __async(this, arguments, function* ({
-      action,
-      modelName,
-      modelClientOptions,
-      useVision = "fallback",
-      variables = {},
-      domSettleTimeoutMs
-    }) {
+  act(actionOrOptions) {
+    return __async(this, null, function* () {
       if (!this.actHandler) {
         throw new Error("Act handler not initialized");
       }
-      useVision = useVision != null ? useVision : "fallback";
+      if (typeof actionOrOptions === "object" && actionOrOptions !== null) {
+        if ("selector" in actionOrOptions && "method" in actionOrOptions) {
+          const observeResult = actionOrOptions;
+          return this.actHandler.actFromObserveResult(observeResult);
+        } else {
+          if (!("action" in actionOrOptions)) {
+            throw new Error(
+              "Invalid argument. Valid arguments are: a string, an ActOptions object, or an ObserveResult WITH 'selector' and 'method' fields."
+            );
+          }
+        }
+      } else if (typeof actionOrOptions === "string") {
+        actionOrOptions = { action: actionOrOptions };
+      } else {
+        throw new Error(
+          "Invalid argument: you may have called act with an empty ObserveResult.\nValid arguments are: a string, an ActOptions object, or an ObserveResult WITH 'selector' and 'method' fields."
+        );
+      }
+      const {
+        action,
+        modelName,
+        modelClientOptions,
+        useVision,
+        // still destructure this but will not pass it on
+        variables = {},
+        domSettleTimeoutMs
+      } = actionOrOptions;
+      if (typeof useVision !== "undefined") {
+        this.stagehand.log({
+          category: "deprecation",
+          message: "Warning: vision is not supported in this version of Stagehand",
+          level: 1
+        });
+      }
       const requestId = Math.random().toString(36).substring(2);
       const llmClient = modelName ? this.stagehand.llmProvider.getClient(modelName, modelClientOptions) : this.llmClient;
       this.stagehand.log({
@@ -4430,8 +4674,6 @@ var StagehandPage = class {
         action,
         llmClient,
         chunksSeen: [],
-        useVision,
-        verifierUseVision: useVision !== false,
         requestId,
         variables,
         previousSelectors: [],
@@ -4461,18 +4703,23 @@ var StagehandPage = class {
       });
     });
   }
-  extract(_0) {
-    return __async(this, arguments, function* ({
-      instruction,
-      schema,
-      modelName,
-      modelClientOptions,
-      domSettleTimeoutMs,
-      useTextExtract
-    }) {
+  extract(instructionOrOptions) {
+    return __async(this, null, function* () {
       if (!this.extractHandler) {
         throw new Error("Extract handler not initialized");
       }
+      const options = typeof instructionOrOptions === "string" ? {
+        instruction: instructionOrOptions,
+        schema: defaultExtractSchema
+      } : instructionOrOptions;
+      const {
+        instruction,
+        schema,
+        modelName,
+        modelClientOptions,
+        domSettleTimeoutMs,
+        useTextExtract
+      } = options;
       const requestId = Math.random().toString(36).substring(2);
       const llmClient = modelName ? this.stagehand.llmProvider.getClient(modelName, modelClientOptions) : this.llmClient;
       this.stagehand.log({
@@ -4524,24 +4771,49 @@ var StagehandPage = class {
       });
     });
   }
-  observe(options) {
+  observe(instructionOrOptions) {
     return __async(this, null, function* () {
-      var _a, _b;
       if (!this.observeHandler) {
         throw new Error("Observe handler not initialized");
       }
+      const options = typeof instructionOrOptions === "string" ? { instruction: instructionOrOptions } : instructionOrOptions || {};
+      const {
+        instruction,
+        modelName,
+        modelClientOptions,
+        useVision,
+        // still destructure but will not pass it on
+        domSettleTimeoutMs,
+        returnAction = false,
+        onlyVisible = false,
+        useAccessibilityTree
+      } = options;
+      if (useAccessibilityTree !== void 0) {
+        this.stagehand.log({
+          category: "deprecation",
+          message: "useAccessibilityTree is deprecated.\n  To use accessibility tree as context:\n    1. Set onlyVisible to false (default)\n    2. Don't declare useAccessibilityTree",
+          level: 1
+        });
+        throw new Error(
+          "useAccessibilityTree is deprecated. Use onlyVisible instead."
+        );
+      }
+      if (typeof useVision !== "undefined") {
+        this.stagehand.log({
+          category: "deprecation",
+          message: "Warning: vision is not supported in this version of Stagehand",
+          level: 1
+        });
+      }
       const requestId = Math.random().toString(36).substring(2);
-      const llmClient = (options == null ? void 0 : options.modelName) ? this.stagehand.llmProvider.getClient(
-        options.modelName,
-        options.modelClientOptions
-      ) : this.llmClient;
+      const llmClient = modelName ? this.stagehand.llmProvider.getClient(modelName, modelClientOptions) : this.llmClient;
       this.stagehand.log({
         category: "observe",
         message: "running observe",
         level: 1,
         auxiliary: {
           instruction: {
-            value: options == null ? void 0 : options.instruction,
+            value: instruction,
             type: "string"
           },
           requestId: {
@@ -4551,16 +4823,20 @@ var StagehandPage = class {
           modelName: {
             value: llmClient.modelName,
             type: "string"
+          },
+          onlyVisible: {
+            value: onlyVisible ? "true" : "false",
+            type: "boolean"
           }
         }
       });
       return this.observeHandler.observe({
-        instruction: (_a = options == null ? void 0 : options.instruction) != null ? _a : "Find actions that can be performed on this page.",
+        instruction,
         llmClient,
-        useVision: (_b = options == null ? void 0 : options.useVision) != null ? _b : false,
-        fullPage: false,
         requestId,
-        domSettleTimeoutMs: options == null ? void 0 : options.domSettleTimeoutMs
+        domSettleTimeoutMs,
+        returnAction,
+        onlyVisible
       }).catch((e) => {
         this.stagehand.log({
           category: "observe",
@@ -4580,7 +4856,7 @@ var StagehandPage = class {
               type: "string"
             },
             instruction: {
-              value: options == null ? void 0 : options.instruction,
+              value: instruction,
               type: "string"
             }
           }
@@ -4592,33 +4868,38 @@ var StagehandPage = class {
       });
     });
   }
-};
-
-// lib/StagehandContext.ts
-var StagehandContext = class _StagehandContext {
-  constructor(context, stagehand) {
-    this.intContext = context;
-    this.stagehand = stagehand;
-  }
-  static init(context, stagehand) {
+  getCDPClient() {
     return __async(this, null, function* () {
-      const proxyContext = new Proxy(context, {
-        get: (target, prop) => {
-          return target[prop];
-        }
-      });
-      const instance = new _StagehandContext(proxyContext, stagehand);
-      return instance;
+      if (!this.cdpClient) {
+        this.cdpClient = yield this.context.newCDPSession(this.page);
+      }
+      return this.cdpClient;
     });
   }
-  get context() {
-    return this.intContext;
+  sendCDP(command, args) {
+    return __async(this, null, function* () {
+      const client = yield this.getCDPClient();
+      return client.send(
+        command,
+        args || {}
+      );
+    });
+  }
+  enableCDP(domain) {
+    return __async(this, null, function* () {
+      yield this.sendCDP(`${domain}.enable`, {});
+    });
+  }
+  disableCDP(domain) {
+    return __async(this, null, function* () {
+      yield this.sendCDP(`${domain}.disable`, {});
+    });
   }
 };
 
 // types/model.ts
-var import_zod3 = require("zod");
-var AvailableModelSchema = import_zod3.z.enum([
+var import_zod4 = require("zod");
+var AvailableModelSchema = import_zod4.z.enum([
   "gpt-4o",
   "gpt-4o-mini",
   "gpt-4o-2024-08-06",
@@ -4626,7 +4907,8 @@ var AvailableModelSchema = import_zod3.z.enum([
   "claude-3-5-sonnet-20241022",
   "claude-3-5-sonnet-20240620",
   "o1-mini",
-  "o1-preview"
+  "o1-preview",
+  "o3-mini"
 ]);
 
 // lib/index.ts
@@ -4778,25 +5060,25 @@ function getBrowser(apiKey, projectId, env = "LOCAL", headless = false, logger, 
           }
         }
       });
-      const tmpDirPath = import_path2.default.join(import_os.default.tmpdir(), "stagehand");
-      if (!import_fs2.default.existsSync(tmpDirPath)) {
-        import_fs2.default.mkdirSync(tmpDirPath, { recursive: true });
+      const tmpDirPath = import_path.default.join(import_os.default.tmpdir(), "stagehand");
+      if (!import_fs.default.existsSync(tmpDirPath)) {
+        import_fs.default.mkdirSync(tmpDirPath, { recursive: true });
       }
-      const tmpDir = import_fs2.default.mkdtempSync(import_path2.default.join(tmpDirPath, "ctx_"));
-      import_fs2.default.mkdirSync(import_path2.default.join(tmpDir, "userdir/Default"), { recursive: true });
+      const tmpDir = import_fs.default.mkdtempSync(import_path.default.join(tmpDirPath, "ctx_"));
+      import_fs.default.mkdirSync(import_path.default.join(tmpDir, "userdir/Default"), { recursive: true });
       const defaultPreferences = {
         plugins: {
           always_open_pdf_externally: true
         }
       };
-      import_fs2.default.writeFileSync(
-        import_path2.default.join(tmpDir, "userdir/Default/Preferences"),
+      import_fs.default.writeFileSync(
+        import_path.default.join(tmpDir, "userdir/Default/Preferences"),
         JSON.stringify(defaultPreferences)
       );
-      const downloadsPath = import_path2.default.join(process.cwd(), "downloads");
-      import_fs2.default.mkdirSync(downloadsPath, { recursive: true });
+      const downloadsPath = import_path.default.join(process.cwd(), "downloads");
+      import_fs.default.mkdirSync(downloadsPath, { recursive: true });
       const context = yield import_test.chromium.launchPersistentContext(
-        import_path2.default.join(tmpDir, "userdir"),
+        import_path.default.join(tmpDir, "userdir"),
         {
           channel: "chrome",
           viewport: null,
@@ -4844,7 +5126,8 @@ var Stagehand = class {
     unsafeMode,
     videoDir,
     harPath,
-    proxy
+    proxy,
+    systemPrompt
   } = {
     env: "BROWSERBASE"
   }) {
@@ -4858,10 +5141,18 @@ var Stagehand = class {
     this.projectId = projectId != null ? projectId : process.env.BROWSERBASE_PROJECT_ID;
     this.verbose = verbose != null ? verbose : 0;
     this.debugDom = debugDom != null ? debugDom : false;
-    this.llmClient = llmClient || this.llmProvider.getClient(
-      modelName != null ? modelName : DEFAULT_MODEL_NAME,
-      modelClientOptions
-    );
+    if (llmClient) {
+      this.llmClient = llmClient;
+    } else {
+      try {
+        this.llmClient = this.llmProvider.getClient(
+          modelName != null ? modelName : DEFAULT_MODEL_NAME,
+          modelClientOptions
+        );
+      } catch (e) {
+        this.llmClient = void 0;
+      }
+    }
     this.domSettleTimeoutMs = domSettleTimeoutMs != null ? domSettleTimeoutMs : 3e4;
     this.headless = headless != null ? headless : false;
     this.browserbaseSessionCreateParams = browserbaseSessionCreateParams;
@@ -4870,6 +5161,7 @@ var Stagehand = class {
     this.videoDir = videoDir;
     this.harPath = harPath;
     this.proxy = proxy;
+    this.userProvidedInstructions = systemPrompt;
   }
   get logger() {
     return (logLine) => {
@@ -4936,7 +5228,8 @@ var Stagehand = class {
         defaultPage,
         this,
         this.stagehandContext,
-        this.llmClient
+        this.llmClient,
+        this.userProvidedInstructions
       ).init();
       if (this.headless) {
         yield this.page.setViewportSize({ width: 1280, height: 720 });
@@ -5053,7 +5346,7 @@ var Stagehand = class {
       yield this.context.close();
       if (this.contextPath) {
         try {
-          import_fs2.default.rmSync(this.contextPath, { recursive: true, force: true });
+          import_fs.default.rmSync(this.contextPath, { recursive: true, force: true });
         } catch (e) {
           console.error("Error deleting context directory:", e);
         }
@@ -5063,8 +5356,11 @@ var Stagehand = class {
 };
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {
+  AnnotatedScreenshotText,
   AvailableModelSchema,
+  LLMClient,
   PlaywrightCommandException,
   PlaywrightCommandMethodNotSupportedException,
-  Stagehand
+  Stagehand,
+  defaultExtractSchema
 });

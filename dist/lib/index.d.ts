@@ -27,7 +27,8 @@ export declare class Stagehand {
     private videoDir?;
     private harPath?;
     private proxy?;
-    constructor({ env, apiKey, projectId, verbose, debugDom, llmProvider, llmClient, headless, logger, browserbaseSessionCreateParams, domSettleTimeoutMs, enableCaching, browserbaseSessionID, modelName, modelClientOptions, unsafeMode, videoDir, harPath, proxy, }?: ConstructorParams);
+    private userProvidedInstructions?;
+    constructor({ env, apiKey, projectId, verbose, debugDom, llmProvider, llmClient, headless, logger, browserbaseSessionCreateParams, domSettleTimeoutMs, enableCaching, browserbaseSessionID, modelName, modelClientOptions, unsafeMode, videoDir, harPath, proxy, systemPrompt, }?: ConstructorParams);
     get logger(): (logLine: LogLine) => void;
     get page(): Page;
     get env(): "LOCAL" | "BROWSERBASE";
@@ -56,3 +57,4 @@ export * from "../types/model";
 export * from "../types/playwright";
 export * from "../types/stagehand";
 export * from "../types/page";
+export * from "./llm/LLMClient";

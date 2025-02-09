@@ -3,6 +3,12 @@ import { LLMClient } from "../llm/LLMClient";
 import { LLMProvider } from "../llm/LLMProvider";
 import { StagehandPage } from "../StagehandPage";
 import { StagehandContext } from "../StagehandContext";
+import { ObserveResult } from "@/types/stagehand";
+/**
+ * NOTE: Vision support has been removed from this version of Stagehand.
+ * If useVision or verifierUseVision is set to true, a warning is logged and
+ * the flow continues as if vision = false.
+ */
 export declare class StagehandActHandler {
     private readonly stagehandPage;
     private readonly verbose;
@@ -11,7 +17,8 @@ export declare class StagehandActHandler {
     private readonly logger;
     private readonly actionCache;
     private readonly actions;
-    constructor({ verbose, llmProvider, enableCaching, logger, stagehandPage, }: {
+    private readonly userProvidedInstructions?;
+    constructor({ verbose, llmProvider, enableCaching, logger, stagehandPage, userProvidedInstructions, }: {
         verbose: 0 | 1 | 2;
         llmProvider: LLMProvider;
         enableCaching: boolean;
@@ -19,7 +26,17 @@ export declare class StagehandActHandler {
         llmClient: LLMClient;
         stagehandPage: StagehandPage;
         stagehandContext: StagehandContext;
+        userProvidedInstructions?: string;
     });
+    /**
+     * Perform an immediate Playwright action based on an ObserveResult object
+     * that was returned from `page.observe(...)`.
+     */
+    actFromObserveResult(observe: ObserveResult): Promise<{
+        success: boolean;
+        message: string;
+        action: string;
+    }>;
     private _recordAction;
     private _verifyActionCompletion;
     private _performPlaywrightMethod;
@@ -28,13 +45,11 @@ export declare class StagehandActHandler {
     private _checkIfCachedStepIsValid_oneXpath;
     private _getValidCachedStepXpath;
     private _runCachedActionIfAvailable;
-    act({ action, steps, chunksSeen, llmClient, useVision, verifierUseVision, retries, requestId, variables, previousSelectors, skipActionCacheForThisStep, domSettleTimeoutMs, }: {
+    act({ action, steps, chunksSeen, llmClient, retries, requestId, variables, previousSelectors, skipActionCacheForThisStep, domSettleTimeoutMs, }: {
         action: string;
         steps?: string;
         chunksSeen: number[];
         llmClient: LLMClient;
-        useVision: boolean | "fallback";
-        verifierUseVision: boolean;
         retries?: number;
         requestId?: string;
         variables: Record<string, string>;

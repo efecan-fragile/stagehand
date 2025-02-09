@@ -78,7 +78,7 @@ export class StagehandObserveHandler {
       },
     });
 
-    let selectorMap: Record<string, string[]> = {};
+    let selectorMap: Record<string, (string | string[])[]> = {};
     let outputString: string;
     const useAccessibilityTree = !onlyVisible;
     if (useAccessibilityTree) {

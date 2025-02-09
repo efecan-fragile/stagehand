@@ -9,7 +9,7 @@
  * The `initStagehand` function takes the model name, an optional DOM settling timeout, and an EvalLogger,
  * then uses these to override some default values before creating and initializing the Stagehand instance.
  */
-import { AvailableModel, Stagehand } from "../lib";
+import { AvailableModel, ConstructorParams, Stagehand } from "@/dist";
 import { EvalLogger } from "./logger";
 /**
  * Initializes a Stagehand instance for a given model:
@@ -22,12 +22,13 @@ import { EvalLogger } from "./logger";
  * - logger: The provided logger, associated with the Stagehand instance
  * - initResponse: Any response data returned by Stagehand initialization
  */
-export declare const initStagehand: ({ modelName, domSettleTimeoutMs, logger, }: {
+export declare const initStagehand: ({ modelName, domSettleTimeoutMs, logger, configOverrides, }: {
     modelName: AvailableModel;
     domSettleTimeoutMs?: number;
     logger: EvalLogger;
+    configOverrides?: Partial<ConstructorParams>;
 }) => Promise<{
     stagehand: Stagehand;
     logger: EvalLogger;
-    initResponse: import("../lib").InitResult;
+    initResponse: import("@/dist").InitResult;
 }>;

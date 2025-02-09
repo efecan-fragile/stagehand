@@ -9,7 +9,7 @@
  * The exported objects (`tasksByName`, `MODELS`, `config`) are used by the main evaluation script and other modules
  * to know which tasks and models are available, and to configure the evaluations accordingly.
  */
-import { AvailableModel } from "../types/model";
+import { AvailableModel } from "@/dist";
 declare const config: any;
 declare const tasksByName: Record<string, {
     categories: string[];

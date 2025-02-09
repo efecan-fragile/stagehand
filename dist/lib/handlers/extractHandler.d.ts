@@ -75,7 +75,8 @@ export declare class StagehandExtractHandler {
     private readonly stagehand;
     private readonly stagehandPage;
     private readonly logger;
-    constructor({ stagehand, logger, stagehandPage, }: {
+    private readonly userProvidedInstructions?;
+    constructor({ stagehand, logger, stagehandPage, userProvidedInstructions, }: {
         stagehand: Stagehand;
         logger: (message: {
             category?: string;
@@ -89,6 +90,7 @@ export declare class StagehandExtractHandler {
             };
         }) => void;
         stagehandPage: StagehandPage;
+        userProvidedInstructions?: string;
     });
     extract<T extends z.AnyZodObject>({ instruction, schema, content, chunksSeen, llmClient, requestId, domSettleTimeoutMs, useTextExtract, }: {
         instruction: string;

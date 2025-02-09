@@ -50,55 +50,59 @@ export const actTools: LLMTool[] = [
   {
     type: "function",
     name: "doAction",
-    description: "execute the next playwright step that directly accomplishes the goal",
+    description:
+      "execute the next playwright step that directly accomplishes the goal",
     parameters: {
       type: "object",
       required: ["method", "element", "args", "step", "completed"],
       properties: {
         method: {
           type: "string",
-          description: "The playwright function to call."
+          description: "The playwright function to call.",
         },
         element: {
           type: "number",
-          description: "The element number to act on"
+          description: "The element number to act on",
         },
         args: {
           type: "array",
           description: "The required arguments",
           items: {
             type: "string",
-            description: "The argument to pass to the function"
-          }
+            description: "The argument to pass to the function",
+          },
         },
         step: {
           type: "string",
-          description: "human readable description of the step that is taken in the past tense. Please be very detailed."
+          description:
+            "human readable description of the step that is taken in the past tense. Please be very detailed.",
         },
         why: {
           type: "string",
-          description: "why is this step taken? how does it advance the goal?"
+          description: "why is this step taken? how does it advance the goal?",
         },
         completed: {
           type: "boolean",
-          description: "true if the goal should be accomplished after this step"
-        }
-      }
-    }
+          description:
+            "true if the goal should be accomplished after this step",
+        },
+      },
+    },
   },
   {
     type: "function",
     name: "skipSection",
-    description: "skips this area of the webpage because the current goal cannot be accomplished here",
+    description:
+      "skips this area of the webpage because the current goal cannot be accomplished here",
     parameters: {
       type: "object",
       properties: {
         reason: {
           type: "string",
-          description: "reason that no action is taken"
-        }
-      }
-    }
+          description: "reason that no action is taken",
+        },
+      },
+    },
   },
 ];
 
@@ -185,8 +189,8 @@ ${domElements}
     actUserPrompt += `
 # Variables
 ${Object.keys(variables)
-      .map((key) => `<|${key.toUpperCase()}|>`)
-      .join("\n")}
+  .map((key) => `<|${key.toUpperCase()}|>`)
+  .join("\n")}
 `;
   }
 

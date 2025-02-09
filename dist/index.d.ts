@@ -3,7 +3,6 @@ import { Page as Page$1, BrowserContext as BrowserContext$1, Browser as Browser$
 import Browserbase from '@browserbasehq/sdk';
 import { ClientOptions as ClientOptions$2 } from '@anthropic-ai/sdk';
 import { ClientOptions as ClientOptions$1 } from 'openai';
-import { ChatCompletionTool, ChatCompletionToolChoiceOption, ChatCompletion } from 'openai/resources';
 
 type LogLine = {
     id?: string;
@@ -19,12 +18,65 @@ type LogLine = {
     };
 };
 
-declare const AvailableModelSchema: z.ZodEnum<["gpt-4o", "gpt-4o-mini", "gpt-4o-2024-08-06", "claude-3-5-sonnet-latest", "claude-3-5-sonnet-20241022", "claude-3-5-sonnet-20240620", "o1-mini", "o1-preview"]>;
+declare const AvailableModelSchema: z.ZodEnum<["gpt-4o", "gpt-4o-mini", "gpt-4o-2024-08-06", "claude-3-5-sonnet-latest", "claude-3-5-sonnet-20241022", "claude-3-5-sonnet-20240620", "o1-mini", "o1-preview", "o3-mini"]>;
 type AvailableModel = z.infer<typeof AvailableModelSchema>;
 type ModelProvider = "openai" | "anthropic";
 type ClientOptions = ClientOptions$1 | ClientOptions$2;
-type ToolCall = ChatCompletionTool;
-type AnthropicTransformedResponse = {
+interface AnthropicJsonSchemaObject {
+    definitions?: {
+        MySchema?: {
+            properties?: Record<string, unknown>;
+            required?: string[];
+        };
+    };
+    properties?: Record<string, unknown>;
+    required?: string[];
+}
+
+interface LLMTool {
+    type: "function";
+    name: string;
+    description: string;
+    parameters: Record<string, unknown>;
+}
+
+interface ChatMessage {
+    role: "system" | "user" | "assistant";
+    content: ChatMessageContent;
+}
+type ChatMessageContent = string | (ChatMessageImageContent | ChatMessageTextContent)[];
+interface ChatMessageImageContent {
+    type: "image_url";
+    image_url: {
+        url: string;
+    };
+    text?: string;
+}
+interface ChatMessageTextContent {
+    type: string;
+    text: string;
+}
+declare const AnnotatedScreenshotText = "This is a screenshot of the current page state with the elements annotated on it. Each element id is annotated with a number to the top left of it. Duplicate annotations at the same location are under each other vertically.";
+interface ChatCompletionOptions {
+    messages: ChatMessage[];
+    temperature?: number;
+    top_p?: number;
+    frequency_penalty?: number;
+    presence_penalty?: number;
+    image?: {
+        buffer: Buffer;
+        description?: string;
+    };
+    response_model?: {
+        name: string;
+        schema: ZodType;
+    };
+    tools?: LLMTool[];
+    tool_choice?: "auto" | "none" | "required";
+    maxTokens?: number;
+    requestId: string;
+}
+type LLMResponse = {
     id: string;
     object: string;
     created: number;
@@ -51,64 +103,19 @@ type AnthropicTransformedResponse = {
         total_tokens: number;
     };
 };
-interface AnthropicJsonSchemaObject {
-    definitions?: {
-        MySchema?: {
-            properties?: Record<string, unknown>;
-            required?: string[];
-        };
-    };
-    properties?: Record<string, unknown>;
-    required?: string[];
+interface CreateChatCompletionOptions {
+    options: ChatCompletionOptions;
+    logger: (message: LogLine) => void;
+    retries?: number;
 }
-
-interface ChatMessage {
-    role: "system" | "user" | "assistant";
-    content: ChatMessageContent;
-}
-type ChatMessageContent = string | (ChatMessageImageContent | ChatMessageTextContent)[];
-interface ChatMessageImageContent {
-    type: "image_url";
-    image_url: {
-        url: string;
-    };
-    text?: string;
-}
-interface ChatMessageTextContent {
-    type: string;
-    text: string;
-}
-interface ChatCompletionOptions {
-    messages: ChatMessage[];
-    temperature?: number;
-    top_p?: number;
-    frequency_penalty?: number;
-    presence_penalty?: number;
-    image?: {
-        buffer: Buffer;
-        description?: string;
-    };
-    response_model?: {
-        name: string;
-        schema: ZodType;
-    };
-    tools?: ToolCall[];
-    tool_choice?: "auto" | ChatCompletionToolChoiceOption;
-    maxTokens?: number;
-    requestId: string;
-}
-type LLMResponse = AnthropicTransformedResponse | ChatCompletion;
 declare abstract class LLMClient {
     type: "openai" | "anthropic" | string;
     modelName: AvailableModel;
     hasVision: boolean;
     clientOptions: ClientOptions;
-    constructor(modelName: AvailableModel);
-    abstract createChatCompletion<T = LLMResponse>(options: ChatCompletionOptions): Promise<T>;
-    abstract logger: (message: {
-        category?: string;
-        message: string;
-    }) => void;
+    userProvidedInstructions?: string;
+    constructor(modelName: AvailableModel, userProvidedInstructions?: string);
+    abstract createChatCompletion<T = LLMResponse>(options: CreateChatCompletionOptions): Promise<T>;
 }
 
 declare class LLMProvider {
@@ -146,6 +153,10 @@ interface ConstructorParams {
         username?: string;
         password?: string;
     };
+    /**
+     * Instructions for stagehand.
+     */
+    systemPrompt?: string;
 }
 interface InitOptions {
     /** @deprecated Pass this into the Stagehand constructor instead. This will be removed in the next major version. */
@@ -174,7 +185,8 @@ interface ActOptions {
     action: string;
     modelName?: AvailableModel;
     modelClientOptions?: ClientOptions;
-    useVision?: "fallback" | boolean;
+    /** @deprecated Vision is not supported in this version of Stagehand. */
+    useVision?: boolean;
     variables?: Record<string, string>;
     domSettleTimeoutMs?: number;
 }
@@ -196,18 +208,41 @@ interface ObserveOptions {
     instruction?: string;
     modelName?: AvailableModel;
     modelClientOptions?: ClientOptions;
+    /** @deprecated Vision is not supported in this version of Stagehand. */
     useVision?: boolean;
     domSettleTimeoutMs?: number;
+    returnAction?: boolean;
+    onlyVisible?: boolean;
+    /** @deprecated `useAccessibilityTree` is now deprecated. Use `onlyVisible` instead. */
+    useAccessibilityTree?: boolean;
 }
 interface ObserveResult {
     selector: string;
     description: string;
+    backendNodeId?: number;
+    method?: string;
+    arguments?: string[];
 }
 
-interface Page extends Page$1 {
-    act: (options: ActOptions) => Promise<ActResult>;
-    extract: <T extends z.AnyZodObject>(options: ExtractOptions<T>) => Promise<ExtractResult<T>>;
-    observe: (options?: ObserveOptions) => Promise<ObserveResult[]>;
+declare const defaultExtractSchema: z.ZodObject<{
+    extraction: z.ZodString;
+}, "strip", z.ZodTypeAny, {
+    extraction?: string;
+}, {
+    extraction?: string;
+}>;
+interface Page extends Omit<Page$1, "on"> {
+    act(action: string): Promise<ActResult>;
+    act(options: ActOptions): Promise<ActResult>;
+    act(observation: ObserveResult): Promise<ActResult>;
+    extract(instruction: string): Promise<ExtractResult<typeof defaultExtractSchema>>;
+    extract<T extends z.AnyZodObject>(options: ExtractOptions<T>): Promise<ExtractResult<T>>;
+    observe(): Promise<ObserveResult[]>;
+    observe(instruction: string): Promise<ObserveResult[]>;
+    observe(options?: ObserveOptions): Promise<ObserveResult[]>;
+    on: {
+        (event: "popup", listener: (page: Page) => unknown): Page;
+    } & Page$1["on"];
 }
 type BrowserContext = BrowserContext$1;
 type Browser = Browser$1;
@@ -258,7 +293,8 @@ declare class Stagehand {
     private videoDir?;
     private harPath?;
     private proxy?;
-    constructor({ env, apiKey, projectId, verbose, debugDom, llmProvider, llmClient, headless, logger, browserbaseSessionCreateParams, domSettleTimeoutMs, enableCaching, browserbaseSessionID, modelName, modelClientOptions, unsafeMode, videoDir, harPath, proxy, }?: ConstructorParams);
+    private userProvidedInstructions?;
+    constructor({ env, apiKey, projectId, verbose, debugDom, llmProvider, llmClient, headless, logger, browserbaseSessionCreateParams, domSettleTimeoutMs, enableCaching, browserbaseSessionID, modelName, modelClientOptions, unsafeMode, videoDir, harPath, proxy, systemPrompt, }?: ConstructorParams);
     get logger(): (logLine: LogLine) => void;
     get page(): Page;
     get env(): "LOCAL" | "BROWSERBASE";
@@ -282,4 +318,4 @@ declare class Stagehand {
     close(): Promise<void>;
 }
 
-export { type ActOptions, type ActResult, type AnthropicJsonSchemaObject, type AnthropicTransformedResponse, type AvailableModel, AvailableModelSchema, type Browser, type BrowserContext, type BrowserResult, type ClientOptions, type ConstructorParams, type ExtractOptions, type ExtractResult, type GotoOptions, type InitFromPageOptions, type InitFromPageResult, type InitOptions, type InitResult, type LogLine, type ModelProvider, type ObserveOptions, type ObserveResult, type Page, PlaywrightCommandException, PlaywrightCommandMethodNotSupportedException, Stagehand, type ToolCall };
+export { type ActOptions, type ActResult, AnnotatedScreenshotText, type AnthropicJsonSchemaObject, type AvailableModel, AvailableModelSchema, type Browser, type BrowserContext, type BrowserResult, type ChatCompletionOptions, type ChatMessage, type ChatMessageContent, type ChatMessageImageContent, type ChatMessageTextContent, type ClientOptions, type ConstructorParams, type CreateChatCompletionOptions, type ExtractOptions, type ExtractResult, type GotoOptions, type InitFromPageOptions, type InitFromPageResult, type InitOptions, type InitResult, LLMClient, type LLMResponse, type LogLine, type ModelProvider, type ObserveOptions, type ObserveResult, type Page, PlaywrightCommandException, PlaywrightCommandMethodNotSupportedException, Stagehand, defaultExtractSchema };

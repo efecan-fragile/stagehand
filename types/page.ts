@@ -9,6 +9,7 @@ import type {
   ObserveOptions,
   ObserveResult,
 } from "./stagehand";
+import { z } from "zod";
 
 export const defaultExtractSchema = z.object({
   extraction: z.string(),

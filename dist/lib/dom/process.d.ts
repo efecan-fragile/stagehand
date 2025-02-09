@@ -1,3 +1,4 @@
+import { StagehandContainer } from "./StagehandContainer";
 export declare function isElementNode(node: Node): node is Element;
 export declare function isTextNode(node: Node): node is Text;
 /**
@@ -7,6 +8,23 @@ interface VisibilityResult {
     visible: boolean;
     reason: string;
 }
+/**
+ * Finds and returns a list of scrollable elements on the page,
+ * ordered from the element with the largest scrollHeight to the smallest.
+ *
+ * @param topN Optional maximum number of scrollable elements to return.
+ *             If not provided, all found scrollable elements are returned.
+ * @returns An array of HTMLElements sorted by descending scrollHeight.
+ */
+export declare function getScrollableElements(topN?: number): HTMLElement[];
+/**
+ * Calls getScrollableElements, then for each element calls generateXPaths,
+ * and returns the first XPath for each.
+ *
+ * @param topN (optional) integer limit on how many scrollable elements to process
+ * @returns string[] list of XPaths (1 for each scrollable element)
+ */
+export declare function getScrollableElementXpaths(topN?: number): Promise<(string | string[])[]>;
 export declare function processDom(chunksSeen: Array<number>): Promise<{
     outputString: string;
     selectorMap: Record<number, (string | string[])[]>;
@@ -18,7 +36,7 @@ export declare function processAllOfDom(): Promise<{
     selectorMap: {};
 }>;
 export declare function scrollToHeight(height: number): Promise<void>;
-export declare function processElements(chunk: number, scrollToChunk?: boolean, indexOffset?: number, debug?: boolean): Promise<{
+export declare function processElements(chunk: number, scrollToChunk?: boolean, indexOffset?: number, container?: StagehandContainer, debug?: boolean): Promise<{
     outputString: string;
     selectorMap: Record<number, (string | string[])[]>;
 }>;

@@ -1,6 +1,5 @@
-import { LogLine } from "../types/log";
-import { LogLineEval } from "../types/evals";
-import { Stagehand } from "../lib";
+import { LogLineEval } from "@/types/evals";
+import { Stagehand, LogLine } from "@/dist";
 /**
  * EvalLogger:
  * A logger class used during evaluations to capture and print log lines.

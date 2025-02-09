@@ -203,12 +203,12 @@ export class StagehandActHandler {
   private async _performPlaywrightMethod(
     method: string,
     args: unknown[],
-    _xpath: string | string[],
+    xpath: string | string[],
     domSettleTimeoutMs?: number,
   ) {
     const locator = safeLocatorWithIframeSupport(
       this.stagehandPage.page,
-      _xpath,
+      xpath,
     );
     const initialUrl = this.stagehandPage.page.url();
 
@@ -218,7 +218,7 @@ export class StagehandActHandler {
       level: 2,
       auxiliary: {
         xpath: {
-          value: typeof _xpath === 'string' ? _xpath : JSON.stringify(_xpath),
+          value: JSON.stringify(xpath),
           type: "string",
         },
         method: {
@@ -235,7 +235,7 @@ export class StagehandActHandler {
         level: 2,
         auxiliary: {
           xpath: {
-            value: typeof _xpath === 'string' ? _xpath : JSON.stringify(_xpath),
+            value: JSON.stringify(xpath),
             type: "string",
           },
         },
@@ -260,7 +260,7 @@ export class StagehandActHandler {
                   type: "string",
                 },
                 xpath: {
-                  value: typeof _xpath === 'string' ? _xpath : JSON.stringify(_xpath),
+                  value: JSON.stringify(xpath),
                   type: "string",
                 },
               },
@@ -281,7 +281,7 @@ export class StagehandActHandler {
               type: "string",
             },
             xpath: {
-              value: typeof _xpath === 'string' ? _xpath : JSON.stringify(_xpath),
+              value: JSON.stringify(xpath),
               type: "string",
             },
           },
@@ -316,7 +316,7 @@ export class StagehandActHandler {
               type: "string",
             },
             xpath: {
-              value: typeof _xpath === 'string' ? _xpath : JSON.stringify(_xpath),
+              value: JSON.stringify(xpath),
               type: "string",
             },
           },
@@ -388,7 +388,7 @@ export class StagehandActHandler {
             // if no label was found or the label doesn't exist, check if
             // there is an ancestor <label>
             labelLocator = this.stagehandPage.page
-              .locator(`xpath=${_xpath}/ancestor::label`)
+              .locator(`xpath=${xpath}/ancestor::label`)
               .first();
           }
           if ((await labelLocator.count()) < 1) {
@@ -429,7 +429,7 @@ export class StagehandActHandler {
               type: "string",
             },
             xpath: {
-              value: typeof _xpath === 'string' ? _xpath : JSON.stringify(_xpath),
+              value: JSON.stringify(xpath),
               type: "string",
             },
             method: {
@@ -453,7 +453,7 @@ export class StagehandActHandler {
         level: 1,
         auxiliary: {
           xpath: {
-            value: typeof _xpath === 'string' ? _xpath : JSON.stringify(_xpath),
+            value: JSON.stringify(xpath),
             type: "string",
           },
         },
@@ -576,7 +576,7 @@ export class StagehandActHandler {
               type: "string",
             },
             xpath: {
-              value: typeof _xpath === 'string' ? _xpath : JSON.stringify(_xpath),
+              value: JSON.stringify(xpath),
               type: "string",
             },
             method: {
@@ -660,7 +660,7 @@ export class StagehandActHandler {
         level: 1,
         auxiliary: {
           xpath: {
-            value: typeof xpath === 'string' ? xpath : JSON.stringify(xpath),
+            value: JSON.stringify(xpath),
             type: "string",
           },
           timeout_ms: {
@@ -683,7 +683,7 @@ export class StagehandActHandler {
       level: 1,
       auxiliary: {
         xpath: {
-          value: typeof xpath === 'string' ? xpath : JSON.stringify(xpath),
+          value: JSON.stringify(cachedStep.xpath),
           type: "string",
         },
         savedComponentString: {
@@ -701,7 +701,7 @@ export class StagehandActHandler {
           level: 1,
           auxiliary: {
             xpath: {
-              value: typeof xpath === 'string' ? xpath : JSON.stringify(xpath),
+              value: JSON.stringify(cachedStep.xpath),
               type: "string",
             },
           },
@@ -1262,7 +1262,7 @@ export class StagehandActHandler {
               level: 1,
               auxiliary: {
                 xpath: {
-                  value: typeof xp === 'string' ? xp : JSON.stringify(xp),
+                  value: JSON.stringify(xp),
                   type: "string",
                 },
                 error: {

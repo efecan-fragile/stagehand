@@ -334,10 +334,10 @@ export class Stagehand {
       videoDir,
       harPath,
       proxy,
-      systemPrompt
+      systemPrompt,
     }: ConstructorParams = {
       env: "BROWSERBASE",
-    }
+    },
   ) {
     this.externalLogger = logger || defaultLogger;
     this.enableCaching =
@@ -357,7 +357,7 @@ export class Stagehand {
         // try to set a default LLM client
         this.llmClient = this.llmProvider.getClient(
           modelName ?? DEFAULT_MODEL_NAME,
-          modelClientOptions
+          modelClientOptions,
         );
       } catch {
         this.llmClient = undefined;

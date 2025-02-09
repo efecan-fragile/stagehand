@@ -7,7 +7,7 @@ export const google_jobs: EvalFunction = async ({
   logger,
   useTextExtract,
 }) => {
-  const fixedModelName = modelName === 'o3-mini' ? 'o1-mini' : modelName;
+  const fixedModelName = modelName === "o3-mini" ? "o1-mini" : modelName;
   const { stagehand, initResponse } = await initStagehand({
     modelName: fixedModelName,
     logger,

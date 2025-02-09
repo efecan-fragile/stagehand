@@ -7,6 +7,7 @@
  * - Generation of unique experiment names based on the current timestamp, environment,
  *   and eval name or category.
  */
+import { LogLine } from "@/dist";
 /**
  * normalizeString:
  * Prepares a string for comparison by:
@@ -60,3 +61,4 @@ export declare function generateExperimentName({ evalName, category, environment
     category?: string;
     environment: string;
 }): string;
+export declare function logLineToString(logLine: LogLine): string;
