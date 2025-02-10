@@ -8,13 +8,15 @@ export declare class OpenAIClient extends LLMClient {
     private client;
     private cache;
     private enableCaching;
+    private seedOverride;
     clientOptions: ClientOptions;
-    constructor({ enableCaching, cache, modelName, clientOptions, }: {
+    constructor({ enableCaching, cache, modelName, clientOptions, seedOverride, }: {
         logger: (message: LogLine) => void;
         enableCaching?: boolean;
         cache?: LLMCache;
         modelName: AvailableModel;
         clientOptions?: ClientOptions;
+        seedOverride?: number;
     });
     createChatCompletion<T = LLMResponse>({ options: optionsInitial, logger, retries, }: CreateChatCompletionOptions): Promise<T>;
 }

@@ -27,6 +27,7 @@ export class OpenAIClient extends LLMClient {
   private client: OpenAI;
   private cache: LLMCache | undefined;
   private enableCaching: boolean;
+  private seedOverride: number | undefined;
   public clientOptions: ClientOptions;
 
   constructor({
@@ -34,12 +35,14 @@ export class OpenAIClient extends LLMClient {
     cache,
     modelName,
     clientOptions,
+    seedOverride,
   }: {
     logger: (message: LogLine) => void;
     enableCaching?: boolean;
     cache?: LLMCache;
     modelName: AvailableModel;
     clientOptions?: ClientOptions;
+    seedOverride?: number;
   }) {
     super(modelName);
     this.clientOptions = clientOptions;
@@ -47,6 +50,7 @@ export class OpenAIClient extends LLMClient {
     this.cache = cache;
     this.enableCaching = enableCaching;
     this.modelName = modelName;
+    this.seedOverride = seedOverride;
   }
 
   async createChatCompletion<T = LLMResponse>({
@@ -337,6 +341,7 @@ export class OpenAIClient extends LLMClient {
         },
         type: "function",
       })),
+      seed: this.seedOverride,
     };
 
     const response = await this.client.chat.completions.create(body);

@@ -1221,7 +1221,8 @@ var OpenAIClient = class extends LLMClient {
     enableCaching = false,
     cache,
     modelName,
-    clientOptions
+    clientOptions,
+    seedOverride
   }) {
     super(modelName);
     this.type = "openai";
@@ -1230,6 +1231,7 @@ var OpenAIClient = class extends LLMClient {
     this.cache = cache;
     this.enableCaching = enableCaching;
     this.modelName = modelName;
+    this.seedOverride = seedOverride;
   }
   createChatCompletion(_0) {
     return __async(this, arguments, function* ({
@@ -1483,7 +1485,8 @@ ${parsedSchema}
             parameters: tool.parameters
           },
           type: "function"
-        }))
+        })),
+        seed: this.seedOverride
       });
       const response = yield this.client.chat.completions.create(body);
       if (isToolsOverridedForO1) {
